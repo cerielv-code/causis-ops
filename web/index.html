@@ -602,6 +602,7 @@ async function xview(el){
   const stats = await Promise.all((accs||[]).map(a => sb.from('x_account_stats').select('followers,at').eq('account_id', a.id).gte('at', since).order('at')));
   const { data: posts } = await sb.from('x_posts').select('*').in('account_id', (accs||[]).map(a=>a.id)).order('created_at',{ascending:false}).limit(60);
   const handle = id => (accs||[]).find(a=>a.id===id)?.handle;
+  const { data: reports } = await sb.from('grok_reports').select('*').order('created_at',{ascending:false}).limit(8);
   $('#xb').innerHTML = `<div class="grid g2" style="margin-bottom:18px">${(accs||[]).map((a,i)=>{ const s = stats[i].data||[]; const first = s[0]?.followers, last = s[s.length-1]?.followers;
       const wk = s.filter(p=>+new Date(p.at) >= Date.now()-7*864e5); const wkd = wk.length ? (last - wk[0].followers) : null;
       const mine = (posts||[]).filter(p=>p.account_id===a.id); const imp = mine.reduce((x,p)=>x+p.impressions,0), eng = mine.reduce((x,p)=>x+p.likes+p.reposts+p.replies+p.quotes+p.bookmarks,0);
@@ -610,6 +611,7 @@ async function xview(el){
         <div class="stat"><div class="label">7 days</div><div class="v">${wkd==null?'-':(wkd>=0?'+':'')+wkd}</div></div>
         <div class="stat"><div class="label">Eng. rate</div><div class="v">${imp?(eng/imp*100).toFixed(1)+'%':'-'}</div><div class="d">last ${mine.length} posts</div></div></div>
         ${spark(s)}</div>`; }).join('')}</div>
+    ${(reports||[]).length ? `<div class="label" style="margin-bottom:8px">Grok Bot reports</div><div class="list" style="margin-bottom:18px">${reports.map(r=>`<div class="item" style="cursor:default"><div class="grow"><div class="row"><b class="grow" style="font-weight:500">${esc(r.bot_name)}</b><span class="meta">${fmtDate(r.created_at)}</span></div><div>${esc(r.summary||'')}</div>${(r.posts||[]).slice(0,5).map(p=>`<div class="meta ttl">${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc((p.text||p.url).slice(0,140))}</a>`:esc((p.text||'').slice(0,140))}</div>`).join('')}</div></div>`).join('')}</div>` : ''}
     <div class="label" style="margin-bottom:8px">Recent posts</div>
     <table><thead><tr><th>Account</th><th>Post</th><th class="num">Impr.</th><th class="num">Likes</th><th class="num">Reposts</th><th class="num">Replies</th><th class="num">Bookm.</th><th>Date</th></tr></thead><tbody>
     ${(posts||[]).map(p=>`<tr><td>@${esc(handle(p.account_id))}</td><td style="max-width:420px"><a href="https://x.com/${esc(handle(p.account_id))}/status/${p.id}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(p.text.slice(0,140))}</a></td><td class="num">${fmtNum(p.impressions)}</td><td class="num">${p.likes}</td><td class="num">${p.reposts}</td><td class="num">${p.replies}</td><td class="num">${p.bookmarks}</td><td>${fmtDate(p.created_at)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No posts synced yet. Add your X API token in Settings to start tracking.</td></tr>'}
@@ -624,7 +626,8 @@ async function approvals(el){
   el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.apprKind = b.dataset.k; approvals(el); });
   let q = sb.from('approvals').select('*, agents(name)').eq('status','pending').order('created_at',{ascending:false}).limit(100);
   if (f !== 'all') q = q.eq('kind', f);
-  const { data } = await vf(q);
+  const [{ data }, { data: gb }] = await Promise.all([vf(q), sb.from('grok_bots').select('id,name,webhook_url')]);
+  S.gbots = gb || [];
   $('#al').innerHTML = (data||[]).map(a => {
     const p = a.payload || {};
     let actions = '', extra = '';
@@ -633,7 +636,8 @@ async function approvals(el){
       actions = `${p.to?`<button class="btn small primary" data-act="send">Send from panel</button>`:''}<button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark sent</button>`; }
     if (a.kind==='x_post') { extra = `<div class="meta">${esc(p.why||'')}${p.source_url?` · <a href="${esc(p.source_url)}" target="_blank" rel="noopener">source</a>`:''}</div>`;
       actions = `<a class="btn small primary" data-act="x" href="#" style="text-decoration:none">Open in X</a><button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark posted</button>`; }
-    if (a.kind==='grok_note' || a.kind==='content' || a.kind==='other') actions = `<button class="btn small primary" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
+    if (a.kind==='grok_note') actions = `${(S.gbots||[]).filter(b=>b.webhook_url).map(b=>`<button class="btn small primary" data-act="grok" data-bot="${b.id}">Send to ${esc(b.name)}</button>`).join('')}<button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
+    if (a.kind==='content' || a.kind==='other') actions = `<button class="btn small primary" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
     return `<div class="appr" data-id="${a.id}"><div class="row">${vdot(a.venture_id)}<b class="grow" style="font-weight:500">${esc(a.title)}</b><span class="pill">${esc(a.agents?.name||'')}</span><span class="meta">${fmtDate(a.created_at)}</span></div>
       ${extra}<textarea data-body>${esc(a.body||'')}</textarea>${a.kind==='x_post'?`<div class="meta" data-len></div>`:''}
       <div class="row">${actions}<span class="grow"></span><button class="btn small ghost" data-act="reject">Reject</button></div></div>`;
@@ -647,6 +651,13 @@ async function approvals(el){
       if (act==='copy') return copyText(ta.value);
       if (act==='x') { const acct = p.account ? `Post this as @${p.account}. ` : ''; window.open('https://x.com/intent/post?text='+encodeURIComponent(ta.value), '_blank', 'noopener'); toast(acct + 'Mark posted when done'); return; }
       if (act==='reject') return finish('rejected', 'Rejected');
+      if (act==='grok') {
+        const { data: { session } } = await sb.auth.getSession();
+        btn.textContent = 'Sending';
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/grok?action=send`, { method:'POST', headers:{ Authorization:`Bearer ${session.access_token}`, apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ bot_id: btn.dataset.bot, text: ta.value, approval_id: id }) });
+        const j = await r.json(); if (!r.ok) { btn.textContent = 'Retry'; return toast(j.error || 'Failed'); }
+        toast('Sent to Grok Bot'); card.remove(); renderCounts(); return;
+      }
       if (act==='done') {
         if (a.kind==='outreach' && p.deal_id) await sb.from('deals').update({ stage:'contacted', next_step:'Wait for reply', next_step_date: new Date(Date.now()+5*864e5).toISOString().slice(0,10) }).eq('id', p.deal_id);
         await sb.from('activity').insert({ venture_id: a.venture_id, kind: a.kind, summary: `${a.kind==='x_post'?'Posted':'Sent'}: ${a.title}` });
@@ -765,7 +776,8 @@ async function outbox(el){
 // ---------- settings ----------
 async function settings(el){
   el.innerHTML = `<h1>Settings</h1><div class="sub">Accounts and background jobs</div><div id="sb"></div>`;
-  const [{ data: accts }, { data: hb }, { data: xacc }] = await Promise.all([sb.from('email_accounts').select('*').order('created_at'), sb.from('worker_heartbeat').select('*'), sb.from('x_accounts').select('*')]);
+  const [{ data: accts }, { data: hb }, { data: xacc }, { data: gbots }] = await Promise.all([sb.from('email_accounts').select('*').order('created_at'), sb.from('worker_heartbeat').select('*'), sb.from('x_accounts').select('*'), sb.from('grok_bots').select('*').order('created_at')]);
+  await Promise.all((gbots||[]).map(async b => { const { data } = await sb.rpc('grok_key_set', { p_bot_id: b.id }); b._key = data === true; }));
   await Promise.all((accts||[]).map(async a => { const { data } = await sb.rpc('email_password_set', { p_account_id: a.id }); a._pw = data === true; }));
   $('#sb').innerHTML = `
     <div class="row" style="margin-bottom:8px"><div class="label grow">Email accounts</div><button class="btn small" id="addAcct">Add account</button></div>
@@ -778,6 +790,11 @@ async function settings(el){
     <div class="card meta" style="margin-bottom:6px">Your agents run on Claude through the Anthropic API. Create a key at console.anthropic.com under API keys. Spending per agent is capped in Agents.</div>
     <div class="row" style="margin:26px 0 8px"><div class="label grow">X accounts</div><span id="xtok"></span><button class="btn small primary" id="setX">Set X API token</button></div>
     <table><thead><tr><th>Handle</th><th>Venture</th><th>Followers</th><th>Last update</th></tr></thead><tbody>${(xacc||[]).map(x=>`<tr><td>@${esc(x.handle)}</td><td>${vdot(x.venture_id)} ${esc(vname(x.venture_id))}</td><td>${fmtNum(x.followers)}</td><td>${x.last_synced_at?fmtDate(x.last_synced_at):'waiting for token'}</td></tr>`).join('')}</tbody></table>
+    <div class="row" style="margin:26px 0 8px"><div class="label grow">Grok Bots</div><button class="btn small" id="addGB">Add Grok Bot</button></div>
+    <table><thead><tr><th>Bot</th><th>Posts as</th><th>Webhook</th><th>Last note sent</th><th>Last report</th><th></th></tr></thead><tbody>
+    ${(gbots||[]).map(b=>`<tr><td>${esc(b.name)}</td><td>${b.handle?'@'+esc(b.handle):''}</td><td>${b.webhook_url&&b._key?'<span class="pill sent">connected</span>':'<span class="pill failed">not connected</span>'}</td><td>${b.last_sent_at?fmtDate(b.last_sent_at):''}</td><td>${b.last_report_at?fmtDate(b.last_report_at):''}</td><td><button class="btn small primary" data-gb="${b.id}">Connect</button></td></tr>`).join('')}
+    </tbody></table>
+    <div class="card" style="margin-top:10px"><div class="row"><div class="grow"><b style="font-weight:500">Let Grok Bot report back</b><div class="meta">Give each Grok Bot these instructions once. It then posts a short report to the panel after every run, shown on the X page.</div></div><button class="btn small" id="gbInstr">Copy instructions</button></div></div>
     <div class="label" style="margin:22px 0 8px">Background jobs</div>
     <table><thead><tr><th>Job</th><th>Last run</th><th>Result</th></tr></thead><tbody>${(hb||[]).map(h=>`<tr><td>${esc(h.name)}</td><td>${new Date(h.last_seen).toLocaleString()}</td><td><code style="font-family:var(--mono);font-size:11.5px">${esc(JSON.stringify(h.info).slice(0,220))}</code></td></tr>`).join('')}</tbody></table>`;
   $('#sb').querySelectorAll('[data-pw]').forEach(b => b.onclick = () => {
@@ -796,6 +813,26 @@ async function settings(el){
       <div class="row full" style="justify-content:flex-end"><button class="btn primary">Save</button></div></form>`);
     $('#af2').onsubmit = async e => { e.preventDefault(); const { error } = await sb.rpc('set_app_secret', { p_name: 'anthropic', p_value: e.target.t.value.trim() });
       if (err(error)) return; closeModal(); toast('Saved. Agents can run now'); settings(el); };
+  };
+  $('#sb').querySelectorAll('[data-gb]').forEach(btn => btn.onclick = () => {
+    const b = gbots.find(x=>x.id===btn.dataset.gb);
+    openModal(`<h3>Connect ${esc(b.name)}</h3><form id="gbf" class="fields">
+      <div class="full meta">In Grok Bot, ask this Bot: "Add a routine called Daily brief from Causis ops with a webhook trigger. When it runs, read the note in the webhook body and use it to steer today's posts for ${b.handle?'@'+esc(b.handle):'my account'}." Then open the routine on desktop and copy the two fields from its Webhook section.</div>
+      <label class="f">Name<input name="name" value="${esc(b.name)}" required></label>
+      <label class="f">Posts as (X handle)<input name="handle" value="${esc(b.handle||'')}"></label>
+      <label class="f full">POST to (webhook URL)<input name="webhook_url" value="${esc(b.webhook_url||'')}" placeholder="https://..."></label>
+      <label class="f full">Key${b._key?' (saved, leave empty to keep)':''}<input type="password" name="key" autocomplete="off"></label>
+      <div class="row full" style="justify-content:flex-end"><button class="btn primary">Save</button></div></form>`);
+    $('#gbf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target);
+      const { error } = await sb.from('grok_bots').update({ name: f.name, handle: (f.handle||'').replace('@','') || null, webhook_url: f.webhook_url }).eq('id', b.id); if (err(error)) return;
+      if (f.key) { const k = f.key.replace(/^Authorization:\s*/i,'').replace(/^Bearer\s+/i,'').trim(); const { error: e2 } = await sb.rpc('set_grok_key', { p_bot_id: b.id, p_key: k }); if (err(e2)) return; }
+      closeModal(); toast('Saved'); settings(el); };
+  });
+  $('#addGB').onclick = async () => { const { error } = await sb.from('grok_bots').insert({ name: 'New Grok Bot' }); if (!err(error)) settings(el); };
+  $('#gbInstr').onclick = async () => {
+    const { data: tok } = await sb.rpc('get_grok_report_token');
+    const txt = `After every run, report back to the Causis ops panel. Send an HTTP POST to ${SUPABASE_URL}/functions/v1/grok?action=report with the header "Authorization: Bearer ${tok}" and the header "Content-Type: application/json", and this JSON body: {"bot": "<your name>", "summary": "<one or two sentences on what you did>", "posts": [{"text": "<post text>", "url": "<link to the post>"}]}. Keep this key private and never post it.`;
+    copyText(txt);
   };
   $('#setX').onclick = () => {
     openModal(`<h3>X API token</h3><form id="xf" class="fields"><div class="full meta">The Bearer Token from your app at developer.x.com, under Keys and tokens. Read only: it can't post or change anything.</div>
