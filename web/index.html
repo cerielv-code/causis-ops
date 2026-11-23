@@ -218,7 +218,6 @@ svg.spark{width:100%;height:64px;display:block;margin-top:14px}
     <div style="height:20px"></div>
     <button class="btn primary" style="width:100%;padding:10px" id="lbtn">Sign in</button>
     <div id="lerr" style="color:var(--bad);font-size:12.5px;margin-top:12px"></div>
-    <div style="margin-top:14px;font-size:12.5px;color:var(--muted)"><span id="lhint">First time here?</span> <a href="#" id="lmode">Create your login</a></div>
   </form>
 </div>
 
@@ -307,22 +306,9 @@ async function boot(){
   sb.channel('live').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'email_messages' }, () => { if (S.view==='inbox'||S.view==='overview') render(); renderCounts(); toast('New email'); })
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'outbox' }, () => { if (S.view==='outbox') render(); }).subscribe();
 }
-let signupMode = false;
-$('#lmode').onclick = (e) => { e.preventDefault(); signupMode = !signupMode;
-  $('#lbtn').textContent = signupMode ? 'Create login' : 'Sign in';
-  $('#lhint').textContent = signupMode ? 'Already have a login?' : 'First time here?';
-  $('#lmode').textContent = signupMode ? 'Sign in' : 'Create your login';
-  $('#lpass').autocomplete = signupMode ? 'new-password' : 'current-password'; $('#lerr').textContent=''; };
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault(); $('#lerr').textContent = '';
   const email = $('#lemail').value.trim(), password = $('#lpass').value;
-  if (signupMode) {
-    if (password.length < 10) { $('#lerr').textContent = 'Use at least 10 characters.'; return; }
-    const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin } });
-    if (error) { $('#lerr').textContent = error.message; return; }
-    if (!data.session) { $('#lerr').style.color='var(--ok)'; $('#lerr').textContent = 'Login created. Confirm it via the email Supabase just sent you, then sign in here.'; return; }
-    return boot();
-  }
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) { $('#lerr').style.color='var(--bad)'; $('#lerr').textContent = error.message === 'Email not confirmed' ? 'Your login still needs confirming. Click the link in the Supabase email.' : error.message; return; }
   boot();
