@@ -313,6 +313,7 @@ function md(t){
   }
   return out+(inList?'</ul>':'');
 }
+function linkify(h){ return h.replace(/(https?:\/\/[^\s<>"']+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,67)+'...':u}</a>`); }
 async function copyText(t){ try { await navigator.clipboard.writeText(t); toast('Copied'); } catch { toast('Copy failed, select the text manually'); } }
 
 // ---------- auth ----------
@@ -438,8 +439,9 @@ async function inbox(el){
   if (S.inbox.sel) openMail(S.inbox.sel);
 }
 async function openMail(id){
-  const { data: m } = await sb.from('email_messages').select('*, email_accounts(address,label), contacts(id,name,org)').eq('id', id).single();
-  if (!m) return;
+  let { data: m, error } = await sb.from('email_messages').select('*, email_accounts(address,label), contacts(id,name,org)').eq('id', id).single();
+  if (error) ({ data: m, error } = await sb.from('email_messages').select('*, email_accounts(address,label)').eq('id', id).single());
+  if (!m) { $('#reader').innerHTML = `<div class="empty">Couldn't open this email${error?': '+esc(error.message):''}</div>`; return; }
   if (!m.is_read) { sb.from('email_messages').update({ is_read: true }).eq('id', id).then(renderCounts); }
   const contact = m.contacts;
   $('#reader').innerHTML = `
@@ -453,7 +455,7 @@ async function openMail(id){
     <h2>${esc(m.subject)}</h2>
     <div class="from"><div class="avatar">${esc((m.from_name||m.from_addr||'?')[0].toUpperCase())}</div><div class="grow"><div><b style="font-weight:500">${esc(m.from_name||m.from_addr)}</b> <span class="meta">&lt;${esc(m.from_addr)}&gt;</span></div><div class="meta">to ${esc((m.to_addrs||[]).join(', '))} · ${esc(m.email_accounts?.label||'')}</div></div><div class="meta">${new Date(m.received_at).toLocaleString([], {weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
     ${m.ai_note?`<div class="card" style="margin-top:16px;padding:12px 14px;background:var(--surface-2);border:none"><span class="label">Chief of staff</span><div style="margin-top:4px">${esc(m.ai_note)}</div></div>`:''}
-    <pre>${esc(m.body_text)}</pre>`;
+    <pre>${linkify(esc(m.body_text || m.snippet || '(no text content)'))}</pre>`;
   $('#reader').querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { await sb.from('email_messages').update({ status: b.dataset.st }).eq('id', id); S.inbox.sel = null; toast('Moved'); inbox($('#view')); });
   $('#reply').onclick = () => compose({ to: m.from_addr, subject: m.subject?.startsWith('Re:') ? m.subject : 'Re: ' + m.subject, in_reply_to: m.message_id, account_id: m.account_id, venture_id: m.venture_id,
     quote: `\n\nOn ${new Date(m.received_at).toLocaleString()}, ${m.from_name||m.from_addr} wrote:\n` + (m.body_text||'').split('\n').map(l=>'> '+l).join('\n').slice(0,4000) });
