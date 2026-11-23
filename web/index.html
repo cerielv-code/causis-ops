@@ -315,6 +315,17 @@ function md(t){
   return out+(inList?'</ul>':'');
 }
 function linkify(h){ return h.replace(/(https?:\/\/[^\s<>"']+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,67)+'...':u}</a>`); }
+async function grokCall(action, body){
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/grok?action=${action}`, { method:'POST', headers:{ Authorization:`Bearer ${session.access_token}`, apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(()=>({})); if (!r.ok && !j.error) j.error = 'Failed ('+r.status+')'; return j;
+}
+function gbStatus(b){
+  if (!(b.webhook_url && b._key)) return '<span class="pill failed">not set up</span>';
+  if (b.last_reply_at && (!b.last_sent_at || new Date(b.last_reply_at) >= new Date(b.last_sent_at) - 864e5)) return '<span class="pill sent">two-way working</span>';
+  if (b.last_sent_at) return '<span class="pill failed">no reply yet</span><div class="meta">Notes reach the webhook, the Bot has not answered</div>';
+  return '<span class="pill">untested</span>';
+}
 async function tgCall(action, body = {}){
   const { data: { session } } = await sb.auth.getSession();
   const r = await fetch(`${SUPABASE_URL}/functions/v1/telegram?action=${action}`, { method:'POST', headers:{ Authorization:`Bearer ${session.access_token}`, apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
@@ -708,11 +719,10 @@ async function approvals(el){
       if (act==='reject') return finish('rejected', 'Rejected');
       if (act==='tg') { btn.textContent = 'Sending'; const r = await tgCall('send', { account_id: p.account_id, chat_id: p.chat_id, text: ta.value }); if (r.error) { btn.textContent = 'Retry'; return toast('Failed: ' + r.error); } return finish('done', 'Sent on Telegram'); }
       if (act==='grok') {
-        const { data: { session } } = await sb.auth.getSession();
         btn.textContent = 'Sending';
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/grok?action=send`, { method:'POST', headers:{ Authorization:`Bearer ${session.access_token}`, apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ bot_id: btn.dataset.bot, text: ta.value, approval_id: id }) });
-        const j = await r.json(); if (!r.ok) { btn.textContent = 'Retry'; return toast(j.error || 'Failed'); }
-        toast('Sent to Grok Bot'); card.remove(); renderCounts(); return;
+        const j = await grokCall('send', { bot_id: btn.dataset.bot, text: ta.value, approval_id: id });
+        if (j.error) { btn.textContent = 'Retry'; return toast(j.error); }
+        toast('Delivered to the webhook. Settings shows when the Bot answers'); card.remove(); renderCounts(); return;
       }
       if (act==='done') {
         if (a.kind==='outreach' && p.deal_id) await sb.from('deals').update({ stage:'contacted', next_step:'Wait for reply', next_step_date: new Date(Date.now()+5*864e5).toISOString().slice(0,10) }).eq('id', p.deal_id);
@@ -947,9 +957,10 @@ async function settings(el){
     </tbody></table>
     <div class="meta" style="margin-top:6px">Connecting works like logging into Telegram on a new device: your phone number and the login code. All accounts share the api_id and api_hash from my.telegram.org. End a session any time here or in Telegram under Settings, Devices.</div>
     <div class="row" style="margin:26px 0 8px"><div class="label grow">Grok Bots</div><button class="btn small" id="addGB">Add Grok Bot</button></div>
-    <table><thead><tr><th>Bot</th><th>Posts as</th><th>Webhook</th><th>Last note sent</th><th>Last report</th><th></th></tr></thead><tbody>
-    ${(gbots||[]).map(b=>`<tr><td>${esc(b.name)}</td><td>${b.handle?'@'+esc(b.handle):''}</td><td>${b.webhook_url&&b._key?'<span class="pill sent">connected</span>':'<span class="pill failed">not connected</span>'}</td><td>${b.last_sent_at?fmtDate(b.last_sent_at):''}</td><td>${b.last_report_at?fmtDate(b.last_report_at):''}</td><td><button class="btn small primary" data-gb="${b.id}">Connect</button></td></tr>`).join('')}
+    <table><thead><tr><th>Bot</th><th>Posts as</th><th>Status</th><th>Last note sent</th><th>Last reply</th><th></th></tr></thead><tbody>
+    ${(gbots||[]).map(b=>`<tr><td>${esc(b.name)}</td><td>${b.handle?'@'+esc(b.handle):''}</td><td>${gbStatus(b)}</td><td>${b.last_sent_at?fmtDate(b.last_sent_at):''}</td><td>${b.last_reply_at?fmtDate(b.last_reply_at):'never'}</td><td style="white-space:nowrap">${b.webhook_url&&b._key?`<button class="btn small" data-gbping="${b.id}">Test connection</button> `:''}<button class="btn small primary" data-gb="${b.id}">Connect</button></td></tr>`).join('')}
     </tbody></table>
+    <div class="meta" style="margin-top:6px">"Note delivered" only means the webhook accepted it. The status turns green once the Bot has actually answered through the reply link that comes with every note.</div>
     <div class="card" style="margin-top:10px"><b style="font-weight:500">Let Grok Bot send things to the panel</b>
       <div class="meta" style="margin:4px 0 12px">Drafts and blockers land in Approvals, posted items show on the X page. Give Grok Bot the address and the format in chat, and paste the key only into its masked field.</div>
       <div class="row"><button class="btn small" id="gbUrl">Copy address</button><button class="btn small" id="gbFmt">Copy address and format</button><button class="btn small primary" id="gbKey">Copy key</button></div></div>
@@ -989,6 +1000,16 @@ async function settings(el){
   $('#sb').querySelectorAll('[data-tgout]').forEach(b => b.onclick = async () => { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Click again to disconnect'; return; } await tgCall('logout', { account_id: b.dataset.tgout }); toast('Disconnected'); settings(el); });
   $('#sb').querySelectorAll('[data-tgin]').forEach(b => b.onclick = () => tgConnect(el, b.dataset.tgin));
   $('#tgAdd').onclick = async () => { const { error } = await sb.from('tg_accounts').insert({ label: 'New account' }); if (!err(error)) settings(el); };
+  $('#sb').querySelectorAll('[data-gbping]').forEach(btn => btn.onclick = async () => {
+    btn.textContent = 'Sending test'; btn.disabled = true;
+    const r = await grokCall('ping', { bot_id: btn.dataset.gbping });
+    if (r.error) { btn.textContent = 'Test connection'; btn.disabled = false; return toast(r.error); }
+    btn.textContent = 'Waiting for reply';
+    for (let i = 0; i < 36; i++) { await new Promise(ok => setTimeout(ok, 5000));
+      const { data } = await sb.from('grok_sends').select('replied_at').eq('id', r.send_id).single();
+      if (data?.replied_at) { toast('The Bot answered. Two-way connection works'); return settings(el); } }
+    toast('The webhook accepted the test, but the Bot did not answer within 3 minutes'); settings(el);
+  });
   $('#addGB').onclick = async () => { const { error } = await sb.from('grok_bots').insert({ name: 'New Grok Bot' }); if (!err(error)) settings(el); };
   const reportUrl = `${SUPABASE_URL}/functions/v1/grok?action=report`;
   $('#gbUrl').onclick = () => copyText(reportUrl);
