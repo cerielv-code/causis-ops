@@ -902,7 +902,9 @@ async function settings(el){
     <table><thead><tr><th>Bot</th><th>Posts as</th><th>Webhook</th><th>Last note sent</th><th>Last report</th><th></th></tr></thead><tbody>
     ${(gbots||[]).map(b=>`<tr><td>${esc(b.name)}</td><td>${b.handle?'@'+esc(b.handle):''}</td><td>${b.webhook_url&&b._key?'<span class="pill sent">connected</span>':'<span class="pill failed">not connected</span>'}</td><td>${b.last_sent_at?fmtDate(b.last_sent_at):''}</td><td>${b.last_report_at?fmtDate(b.last_report_at):''}</td><td><button class="btn small primary" data-gb="${b.id}">Connect</button></td></tr>`).join('')}
     </tbody></table>
-    <div class="card" style="margin-top:10px"><div class="row"><div class="grow"><b style="font-weight:500">Let Grok Bot report back</b><div class="meta">Give each Grok Bot these instructions once. It then posts a short report to the panel after every run, shown on the X page.</div></div><button class="btn small" id="gbInstr">Copy instructions</button></div></div>
+    <div class="card" style="margin-top:10px"><b style="font-weight:500">Let Grok Bot send things to the panel</b>
+      <div class="meta" style="margin:4px 0 12px">Drafts and blockers land in Approvals, posted items show on the X page. Give Grok Bot the address and the format in chat, and paste the key only into its masked field.</div>
+      <div class="row"><button class="btn small" id="gbUrl">Copy address</button><button class="btn small" id="gbFmt">Copy address and format</button><button class="btn small primary" id="gbKey">Copy key</button></div></div>
     <div class="label" style="margin:22px 0 8px">Background jobs</div>
     <table><thead><tr><th>Job</th><th>Last run</th><th>Result</th></tr></thead><tbody>${(hb||[]).map(h=>`<tr><td>${esc(h.name)}</td><td>${new Date(h.last_seen).toLocaleString()}</td><td><code style="font-family:var(--mono);font-size:11.5px">${esc(JSON.stringify(h.info).slice(0,220))}</code></td></tr>`).join('')}</tbody></table>`;
   $('#sb').querySelectorAll('[data-pw]').forEach(b => b.onclick = () => {
@@ -940,11 +942,13 @@ async function settings(el){
   $('#sb').querySelectorAll('[data-tgin]').forEach(b => b.onclick = () => tgConnect(el, b.dataset.tgin));
   $('#tgAdd').onclick = async () => { const { error } = await sb.from('tg_accounts').insert({ label: 'New account' }); if (!err(error)) settings(el); };
   $('#addGB').onclick = async () => { const { error } = await sb.from('grok_bots').insert({ name: 'New Grok Bot' }); if (!err(error)) settings(el); };
-  $('#gbInstr').onclick = async () => {
-    const { data: tok } = await sb.rpc('get_grok_report_token');
-    const txt = `After every run, report back to the Causis ops panel. Send an HTTP POST to ${SUPABASE_URL}/functions/v1/grok?action=report with the header "Authorization: Bearer ${tok}" and the header "Content-Type: application/json", and this JSON body: {"bot": "<your name>", "summary": "<one or two sentences on what you did>", "posts": [{"text": "<post text>", "url": "<link to the post>"}]}. Keep this key private and never post it.`;
-    copyText(txt);
-  };
+  const reportUrl = `${SUPABASE_URL}/functions/v1/grok?action=report`;
+  $('#gbUrl').onclick = () => copyText(reportUrl);
+  $('#gbFmt').onclick = () => copyText(`Panel endpoint: POST ${reportUrl}
+Headers: "Authorization: Bearer <key I give you in the masked field>" and "Content-Type: application/json".
+Body: {"bot": "Anna (coordinator)", "summary": "<optional, one or two sentences>", "items": [{"type": "post|reply|quote|blocker|note", "account": "annaos_ai|notinvariant", "text": "...", "target_url": "<post you reply to or quote, if any>", "status": "draft|posted|blocked", "permalink": "<link once posted>", "note": "<why, or context>"}]}
+Items with status "draft" go to my Approvals queue, "blocker" items or status "blocked" go to Approvals as things that need me, and "posted" items show on the X page. Send up to 50 items per call. A 200 response with {"ok": true} means it was received.`);
+  $('#gbKey').onclick = async () => { const { data: tok } = await sb.rpc('get_grok_report_token'); copyText(tok || ''); };
   $('#setX').onclick = () => {
     openModal(`<h3>X API token</h3><form id="xf" class="fields"><div class="full meta">The Bearer Token from your app at developer.x.com, under Keys and tokens. Read only: it can't post or change anything.</div>
       <label class="f full">Bearer token<input type="password" name="t" autocomplete="off" required></label>

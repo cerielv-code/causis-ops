@@ -1,6 +1,6 @@
 // Grok Bot bridge.
 // POST /functions/v1/grok?action=send   (operator JWT)  body: { bot_id, text, approval_id? }  -> triggers the bot's routine webhook
-// POST /functions/v1/grok?action=report (Authorization: Bearer <report token>) body: { bot, summary, posts: [{ text, url }] }
+// POST /functions/v1/grok?action=report (Authorization: Bearer <report token>) body: { bot, summary, posts: [{ text, url }] } or { items: [{ type, account, text, target_url, status, permalink, note }] }
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -31,13 +31,37 @@ Deno.serve(async (req) => {
     const token = (auth ?? "").replace(/^Bearer\s+/i, "");
     const { data: ok } = await admin.rpc("grok_report_token_ok", { candidate: token });
     if (!ok) return json({ error: "unauthorized" }, 401);
-    const name = String(body.bot ?? body.name ?? "Grok Bot").slice(0, 100);
-    const { data: bot } = await admin.from("grok_bots").select("id").or(`name.ilike.${name},handle.ilike.${name.replace(/^@/, "")}`).limit(1).maybeSingle();
-    const posts = Array.isArray(body.posts) ? body.posts.slice(0, 50) : [];
-    await admin.from("grok_reports").insert({ bot_id: bot?.id ?? null, bot_name: name, summary: String(body.summary ?? "").slice(0, 4000), posts, raw: body });
+    const name = String(body.bot ?? body.name ?? "Anna (coordinator)").slice(0, 100);
+    const { data: bots } = await admin.from("grok_bots").select("id,name,handle");
+    const low = name.toLowerCase().replace(/^@/, "");
+    const bot = (bots ?? []).find((b) => b.name.toLowerCase() === low || b.name.toLowerCase().startsWith(low) || (b.handle ?? "").toLowerCase() === low) ?? ((bots ?? []).length === 1 ? bots![0] : null);
+    // Accept Anna's item format: { items: [{ type, account, text, target_url, status, permalink, note }] } or a single item at top level
+    const items = (Array.isArray(body.items) ? body.items : (body.type ? [body] : [])).slice(0, 50) as Record<string, string>[];
+    const posts = (Array.isArray(body.posts) ? body.posts.slice(0, 50) : []) as Record<string, unknown>[];
+    let queued = 0;
+    const { data: vs } = await admin.from("ventures").select("id,slug");
+    const vid = (acct?: string) => acct?.replace("@", "") === "annaos_ai" ? vs?.find((v) => v.slug === "anna")?.id : acct?.replace("@", "") === "causisresearch" ? vs?.find((v) => v.slug === "causis")?.id : null;
+    for (const it of items) {
+      const acct = (it.account ?? "").replace("@", "");
+      const status = (it.status ?? "").toLowerCase();
+      if (["posted", "published", "done", "sent"].includes(status)) { posts.push({ text: it.text, url: it.permalink ?? it.target_url ?? null, account: acct, type: it.type }); continue; }
+      if ((it.type ?? "").toLowerCase() === "blocker" || status === "blocked") {
+        await admin.from("approvals").insert({ kind: "other", title: `${name}: needs you${acct ? " (@" + acct + ")" : ""}`, body: String(it.text ?? it.note ?? ""), venture_id: vid(acct) ?? null, payload: { source: "grok", target_url: it.target_url ?? null } });
+        queued++; continue;
+      }
+      if (["post", "reply", "quote"].includes((it.type ?? "post").toLowerCase())) {
+        await admin.from("approvals").insert({ kind: "x_post", title: `@${acct || "x"} ${it.type ?? "post"} from ${name}`, body: String(it.text ?? ""), venture_id: vid(acct) ?? null,
+          payload: { account: acct, why: it.note ?? `Drafted by ${name}`, source_url: it.target_url ?? null, reply_to: it.type === "reply" ? it.target_url ?? null : null, source: "grok" } });
+        queued++; continue;
+      }
+      await admin.from("approvals").insert({ kind: "other", title: `${name}: ${it.type ?? "item"}`, body: String(it.text ?? it.note ?? ""), venture_id: vid(acct) ?? null, payload: { source: "grok", ...it } });
+      queued++;
+    }
+    const summary = String(body.summary ?? (items.length ? `${posts.length} posted, ${queued} sent to Approvals` : ""));
+    if (posts.length || summary) await admin.from("grok_reports").insert({ bot_id: bot?.id ?? null, bot_name: name, summary: summary.slice(0, 4000), posts, raw: body });
     if (bot?.id) await admin.from("grok_bots").update({ last_report_at: new Date().toISOString() }).eq("id", bot.id);
-    await admin.from("activity").insert({ kind: "grok_report", summary: `${name} reported: ${String(body.summary ?? `${posts.length} posts`).slice(0, 140)}` });
-    return json({ ok: true });
+    await admin.from("activity").insert({ kind: "grok_report", summary: `${name}: ${summary.slice(0, 140) || "report"}` });
+    return json({ ok: true, posted: posts.length, queued_for_approval: queued });
   }
 
   if (action === "send") {
