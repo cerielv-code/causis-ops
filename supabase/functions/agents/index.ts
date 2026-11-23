@@ -97,11 +97,13 @@ async function runChief(c: Ctx) {
     admin.from("agent_runs").select("summary,started_at,agents(name)").gte("started_at", new Date(Date.now() - 864e5).toISOString()).eq("status", "done").limit(10),
     admin.from("x_accounts").select("handle,followers"),
   ]);
+  const { data: tgm } = await admin.from("tg_messages").select("text,sender_name,sent_at,tg_chats!inner(title,tracked)").eq("tg_chats.tracked", true).eq("is_outgoing", false).gte("sent_at", new Date(Date.now() - 864e5).toISOString()).order("sent_at", { ascending: false }).limit(60);
+  const tgText = (tgm ?? []).map((m) => `[${(m as unknown as { tg_chats: { title: string } }).tg_chats.title}] ${m.sender_name ?? ""}: ${(m.text ?? "").slice(0, 300)}`).join("\n");
   const mailText = (mails ?? []).map((m) => `[${m.id}] ${m.received_at} From: ${m.from_name ?? ""} <${m.from_addr}> Subject: ${m.subject}\n${(m.body_text ?? "").slice(0, 1200)}`).join("\n\n---\n\n");
   const out = await claude({
     model: c.agent.model,
     system: BASE_SYSTEM("You are the chief of staff. Write for a busy founder: short, specific, prioritised."),
-    user: `${await kb(["causis", "anna", "voice"])}\n\n# Extra instructions\n${c.agent.instructions}\n\n# New emails (${(mails ?? []).length})\n${mailText || "None"}\n\n# Deals with next steps due\n${JSON.stringify(deals)}\n\n# Tasks due\n${JSON.stringify(tasks)}\n\n# Pending approvals: ${pending ?? 0}\n\n# Agent results last 24h\n${(runs ?? []).map((r) => `- ${(r as { agents?: { name?: string } }).agents?.name}: ${r.summary}`).join("\n")}\n\n# X followers\n${JSON.stringify(xs)}\n\nTriage every email. Draft replies (as Ceriel, first person, short) only where a reply is clearly needed and not a newsletter or notification. Then write today's brief in markdown: Top 3 for today, Inbox highlights, Pipeline, Agents, Numbers. Max 250 words.`,
+    user: `${await kb(["causis", "anna", "voice"])}\n\n# Extra instructions\n${c.agent.instructions}\n\n# New emails (${(mails ?? []).length})\n${mailText || "None"}\n\n# Deals with next steps due\n${JSON.stringify(deals)}\n\n# Telegram, starred chats, last 24h\n${tgText || "None"}\n\n# Tasks due\n${JSON.stringify(tasks)}\n\n# Pending approvals: ${pending ?? 0}\n\n# Agent results last 24h\n${(runs ?? []).map((r) => `- ${(r as { agents?: { name?: string } }).agents?.name}: ${r.summary}`).join("\n")}\n\n# X followers\n${JSON.stringify(xs)}\n\nTriage every email. Draft replies (as Ceriel, first person, short) only where a reply is clearly needed and not a newsletter or notification. Then write today's brief in markdown: Top 3 for today, Inbox highlights, Telegram highlights (skip if none), Pipeline, Agents, Numbers. Max 250 words.`,
     schema: {
       type: "object", required: ["triage", "brief", "summary"],
       properties: {

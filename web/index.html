@@ -314,6 +314,11 @@ function md(t){
   return out+(inList?'</ul>':'');
 }
 function linkify(h){ return h.replace(/(https?:\/\/[^\s<>"']+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u.length>70?u.slice(0,67)+'...':u}</a>`); }
+async function tgCall(action, body = {}){
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/telegram?action=${action}`, { method:'POST', headers:{ Authorization:`Bearer ${session.access_token}`, apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(()=>({ error: 'Bad response' })); if (!r.ok && !j.error) j.error = 'Failed'; return j;
+}
 async function copyText(t){ try { await navigator.clipboard.writeText(t); toast('Copied'); } catch { toast('Copy failed, select the text manually'); } }
 
 // ---------- auth ----------
@@ -618,6 +623,29 @@ async function xview(el){
     </tbody></table>`;
 }
 
+function tgConnect(el){
+  const step1 = () => { openModal(`<h3>Connect Telegram, 1 of 3</h3><form id="t1" class="fields"><div class="full meta">From my.telegram.org, under API development tools.</div>
+      <label class="f">api_id<input name="id" inputmode="numeric" required></label><label class="f">api_hash<input name="hash" type="password" autocomplete="off" required></label>
+      <label class="f full">Your phone number<input name="phone" placeholder="+31 6 12345678" required></label>
+      <div class="row full" style="justify-content:flex-end"><button class="btn primary">Send me a login code</button></div><div class="full" id="t1e" style="color:var(--bad);font-size:12.5px"></div></form>`);
+    $('#t1').onsubmit = async e => { e.preventDefault(); const f = formData(e.target); const btn = e.target.querySelector('button'); btn.textContent = 'Sending';
+      const a = await sb.rpc('set_app_secret', { p_name:'tg_api_id', p_value: String(f.id).trim() }); const b = await sb.rpc('set_app_secret', { p_name:'tg_api_hash', p_value: String(f.hash).trim() });
+      if (a.error || b.error) { $('#t1e').textContent = (a.error||b.error).message; btn.textContent = 'Send me a login code'; return; }
+      const r = await tgCall('login_start', { phone: String(f.phone).replace(/[^+\d]/g,'') }); if (r.error) { $('#t1e').textContent = r.error; btn.textContent = 'Send me a login code'; return; } step2(); }; };
+  const step2 = () => { openModal(`<h3>Connect Telegram, 2 of 3</h3><form id="t2" class="fields"><div class="full meta">Telegram sent a login code to your Telegram app (check the "Telegram" chat). Enter it here.</div>
+      <label class="f full">Login code<input name="code" inputmode="numeric" autocomplete="one-time-code" required></label>
+      <div class="row full" style="justify-content:flex-end"><button class="btn primary">Log in</button></div><div class="full" id="t2e" style="color:var(--bad);font-size:12.5px"></div></form>`);
+    $('#t2').onsubmit = async e => { e.preventDefault(); const btn = e.target.querySelector('button'); btn.textContent = 'Logging in'; const r = await tgCall('login_code', { code: e.target.code.value });
+      if (r.error) { $('#t2e').textContent = r.error; btn.textContent = 'Log in'; return; } if (r.password_needed) return step3(); done(); }; };
+  const step3 = () => { openModal(`<h3>Connect Telegram, 3 of 3</h3><form id="t3" class="fields"><div class="full meta">Your account has two-step verification. Enter your Telegram cloud password.</div>
+      <label class="f full">Cloud password<input name="pw" type="password" autocomplete="off" required></label>
+      <div class="row full" style="justify-content:flex-end"><button class="btn primary">Finish</button></div><div class="full" id="t3e" style="color:var(--bad);font-size:12.5px"></div></form>`);
+    $('#t3').onsubmit = async e => { e.preventDefault(); const btn = e.target.querySelector('button'); btn.textContent = 'Checking'; const r = await tgCall('login_password', { password: e.target.pw.value });
+      if (r.error) { $('#t3e').textContent = r.error; btn.textContent = 'Finish'; return; } done(); }; };
+  const done = async () => { closeModal(); toast('Telegram connected. Syncing your chats'); await tgCall('sync'); settings(el); };
+  step1();
+}
+
 // ---------- approvals ----------
 async function approvals(el){
   const f = S.apprKind || 'all';
@@ -761,9 +789,43 @@ async function growth(el){
 }
 
 // ---------- telegram ----------
-function telegram(el){
-  el.innerHTML = `<h1>Telegram</h1><div class="sub">Coming next</div><div class="card" style="max-width:560px">Your personal Telegram account will sync here: tracked chats per venture, unread counts and replies from the panel. This needs a small always-on worker, which we'll set up once you're ready.</div>`;
+async function telegram(el){
+  const { data: st } = await sb.from('tg_status').select('*').eq('id',1).single();
+  if (!st?.connected) { el.innerHTML = `<h1>Telegram</h1><div class="sub">Your personal Telegram account</div><div class="card" style="max-width:560px">Not connected yet. Connect your account under <a href="#settings">Settings</a>, then come back here.</div>`; return; }
+  S.tg = S.tg || { filter: 'tracked', sel: null, q: '' };
+  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">Telegram</h1><span class="meta">${st.last_sync_at?'synced '+fmtDate(st.last_sync_at):''}</span><button class="btn small" id="tgSync">Sync now</button></div>
+    <div class="sub">Star the chats that matter. Starred chats keep their full message history here and feed your Chief of staff.</div>
+    <div class="tabs">${[['tracked','Starred'],['all','All chats']].map(([k,l])=>`<button data-f="${k}" class="${S.tg.filter===k?'on':''}">${l}</button>`).join('')}</div>
+    <div class="inbox"><div class="list" id="tgl"></div><div class="reader" id="tgr" style="display:flex;flex-direction:column;padding:0"><div class="empty">Select a chat</div></div></div>`;
+  el.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { S.tg.filter = b.dataset.f; telegram(el); });
+  $('#tgSync').onclick = async (e) => { e.target.textContent = 'Syncing'; const r = await tgCall('sync'); toast(r.error ? 'Failed: '+r.error : `Synced ${r.chats||0} chats`); telegram(el); };
+  let q = sb.from('tg_chats').select('*').order('last_message_at',{ascending:false,nullsFirst:false}).limit(150);
+  if (S.tg.filter==='tracked') q = q.eq('tracked', true);
+  if (S.venture!=='all' && S.tg.filter==='tracked') q = q.eq('venture_id', S.venture);
+  const { data: chats } = await q;
+  $('#tgl').innerHTML = (chats||[]).map(c => `<div class="item ${c.unread_count?'unread':''} ${S.tg.sel===String(c.id)?'sel':''}" data-c="${c.id}">${vdot(c.venture_id)}<div class="grow" style="min-width:0"><div class="row"><div class="ttl grow">${c.tracked?'★ ':''}${esc(c.title)}</div><span class="meta">${fmtDate(c.last_message_at)}</span></div><div class="row" style="flex-wrap:nowrap"><div class="meta ttl grow">${esc(c.last_message_preview||'')}</div>${c.unread_count?`<span class="pill todo">${c.unread_count}</span>`:''}</div></div></div>`).join('')
+    || `<div class="empty">${S.tg.filter==='tracked'?'No starred chats yet. Open All chats and star the ones that matter.':'No chats synced yet. Click Sync now.'}</div>`;
+  $('#tgl').querySelectorAll('[data-c]').forEach(i => i.onclick = () => { S.tg.sel = i.dataset.c; $('#tgl').querySelectorAll('.item').forEach(x=>x.classList.toggle('sel', x===i)); openChat((chats||[]).find(c=>String(c.id)===i.dataset.c), el); });
+  if (S.tg.sel) { const c = (chats||[]).find(c=>String(c.id)===S.tg.sel); if (c) openChat(c, el); }
 }
+async function openChat(c, el){
+  const { data: msgs } = await sb.from('tg_messages').select('*').eq('chat_id', c.id).order('sent_at',{ascending:false}).limit(80);
+  const list = (msgs||[]).slice().reverse();
+  $('#tgr').innerHTML = `<div class="row" style="padding:14px 18px;border-bottom:1px solid var(--line)"><b class="grow" style="font-weight:500">${esc(c.title)}</b>
+      <select id="tgv" style="width:auto">${['<option value="">No venture</option>'].concat(S.ventures.map(v=>`<option value="${v.id}" ${v.id===c.venture_id?'selected':''}>${esc(v.name)}</option>`)).join('')}</select>
+      <button class="btn small ${c.tracked?'primary':''}" id="tgt">${c.tracked?'★ Starred':'☆ Star'}</button></div>
+    <div id="tgm" style="flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:8px">${list.length ? list.map(m=>`<div style="max-width:78%;${m.is_outgoing?'align-self:flex-end;background:var(--accent-soft)':'align-self:flex-start;background:var(--surface-2)'};padding:8px 12px;border-radius:var(--radius-sm)">${!m.is_outgoing&&c.kind!=='user'&&m.sender_name?`<div class="meta" style="font-weight:500">${esc(m.sender_name)}</div>`:''}<div style="white-space:pre-wrap">${linkify(esc(m.text||''))}</div><div class="meta" style="font-size:11px;text-align:right">${new Date(m.sent_at).toLocaleString([], {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>`).join('')
+      : `<div class="empty">${c.tracked?'No messages loaded yet.':'Star this chat to keep its messages here.'}<div style="margin-top:10px"><button class="btn small" id="tgh">Load recent messages</button></div></div>`}</div>
+    <form id="tgf" class="row" style="padding:12px 18px;border-top:1px solid var(--line);flex-wrap:nowrap"><textarea name="t" placeholder="Write a message" style="min-height:44px;height:44px;flex:1"></textarea><button class="btn primary">Send</button></form>`;
+  const box = $('#tgm'); box.scrollTop = box.scrollHeight;
+  $('#tgt').onclick = async () => { await sb.from('tg_chats').update({ tracked: !c.tracked }).eq('id', c.id); c.tracked = !c.tracked; if (c.tracked && !list.length) await tgCall('history', { chat_id: String(c.id) }); telegram(el); };
+  $('#tgv').onchange = async (e) => { await sb.from('tg_chats').update({ venture_id: e.target.value || null }).eq('id', c.id); toast('Saved'); };
+  const h = $('#tgh'); if (h) h.onclick = async () => { h.textContent = 'Loading'; const r = await tgCall('history', { chat_id: String(c.id) }); if (r.error) { toast(r.error); h.textContent = 'Retry'; return; } openChat(c, el); };
+  $('#tgf').onsubmit = async (e) => { e.preventDefault(); const t = e.target.t.value.trim(); if (!t) return; e.target.querySelector('button').textContent = 'Sending';
+    const r = await tgCall('send', { chat_id: String(c.id), text: t }); if (r.error) { toast('Failed: ' + r.error); e.target.querySelector('button').textContent = 'Send'; return; } openChat(c, el); };
+  $('#tgf textarea').onkeydown = (e) => { if (e.key==='Enter' && (e.metaKey||e.ctrlKey)) $('#tgf').requestSubmit(); };
+}
+
 
 // ---------- outbox ----------
 async function outbox(el){
@@ -776,6 +838,7 @@ async function outbox(el){
 // ---------- settings ----------
 async function settings(el){
   el.innerHTML = `<h1>Settings</h1><div class="sub">Accounts and background jobs</div><div id="sb"></div>`;
+  const { data: tgs } = await sb.from('tg_status').select('*').eq('id',1).maybeSingle();
   const [{ data: accts }, { data: hb }, { data: xacc }, { data: gbots }] = await Promise.all([sb.from('email_accounts').select('*').order('created_at'), sb.from('worker_heartbeat').select('*'), sb.from('x_accounts').select('*'), sb.from('grok_bots').select('*').order('created_at')]);
   await Promise.all((gbots||[]).map(async b => { const { data } = await sb.rpc('grok_key_set', { p_bot_id: b.id }); b._key = data === true; }));
   await Promise.all((accts||[]).map(async a => { const { data } = await sb.rpc('email_password_set', { p_account_id: a.id }); a._pw = data === true; }));
@@ -790,6 +853,9 @@ async function settings(el){
     <div class="card meta" style="margin-bottom:6px">Your agents run on Claude through the Anthropic API. Create a key at console.anthropic.com under API keys. Spending per agent is capped in Agents.</div>
     <div class="row" style="margin:26px 0 8px"><div class="label grow">X accounts</div><span id="xtok"></span><button class="btn small primary" id="setX">Set X API token</button></div>
     <table><thead><tr><th>Handle</th><th>Venture</th><th>Followers</th><th>Last update</th></tr></thead><tbody>${(xacc||[]).map(x=>`<tr><td>@${esc(x.handle)}</td><td>${vdot(x.venture_id)} ${esc(vname(x.venture_id))}</td><td>${fmtNum(x.followers)}</td><td>${x.last_synced_at?fmtDate(x.last_synced_at):'waiting for token'}</td></tr>`).join('')}</tbody></table>
+    <div class="row" style="margin:26px 0 8px"><div class="label grow">Telegram (your personal account)</div>${tgs?.connected?'<span class="pill sent">connected</span> <button class="btn small" id="tgOut">Disconnect</button>':'<button class="btn small primary" id="tgIn">Connect Telegram</button>'}</div>
+    <div class="card">${tgs?.connected ? `Logged in as <b style="font-weight:500">${esc(tgs.me?.name||'')}</b>${tgs.me?.username?' (@'+esc(tgs.me.username)+')':''}. Syncs every 5 minutes${tgs.last_sync_at?', last '+fmtDate(tgs.last_sync_at):''}.${tgs.last_error?`<div style="color:var(--bad);font-size:12.5px;margin-top:6px">${esc(tgs.last_error)}</div>`:''}`
+      : `<span class="meta">Works like logging into Telegram on a new device: your API keys from my.telegram.org, then your phone number and the login code. The session is stored encrypted. You can end it any time here or in Telegram under Settings, Devices.</span>`}</div>
     <div class="row" style="margin:26px 0 8px"><div class="label grow">Grok Bots</div><button class="btn small" id="addGB">Add Grok Bot</button></div>
     <table><thead><tr><th>Bot</th><th>Posts as</th><th>Webhook</th><th>Last note sent</th><th>Last report</th><th></th></tr></thead><tbody>
     ${(gbots||[]).map(b=>`<tr><td>${esc(b.name)}</td><td>${b.handle?'@'+esc(b.handle):''}</td><td>${b.webhook_url&&b._key?'<span class="pill sent">connected</span>':'<span class="pill failed">not connected</span>'}</td><td>${b.last_sent_at?fmtDate(b.last_sent_at):''}</td><td>${b.last_report_at?fmtDate(b.last_report_at):''}</td><td><button class="btn small primary" data-gb="${b.id}">Connect</button></td></tr>`).join('')}
@@ -828,6 +894,8 @@ async function settings(el){
       if (f.key) { const k = f.key.replace(/^Authorization:\s*/i,'').replace(/^Bearer\s+/i,'').trim(); const { error: e2 } = await sb.rpc('set_grok_key', { p_bot_id: b.id, p_key: k }); if (err(e2)) return; }
       closeModal(); toast('Saved'); settings(el); };
   });
+  const tgo = $('#tgOut'); if (tgo) tgo.onclick = async () => { if (tgo.dataset.sure !== '1') { tgo.dataset.sure = '1'; tgo.textContent = 'Click again to disconnect'; return; } await tgCall('logout'); toast('Disconnected'); settings(el); };
+  const tgi = $('#tgIn'); if (tgi) tgi.onclick = () => tgConnect(el);
   $('#addGB').onclick = async () => { const { error } = await sb.from('grok_bots').insert({ name: 'New Grok Bot' }); if (!err(error)) settings(el); };
   $('#gbInstr').onclick = async () => {
     const { data: tok } = await sb.rpc('get_grok_report_token');
