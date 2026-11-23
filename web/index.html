@@ -202,6 +202,16 @@ svg.spark{width:100%;height:64px;display:block;margin-top:14px}
 .p1{color:var(--accent);font-weight:500}
 .xhead{display:flex;gap:30px;margin:16px 0 0}
 .xhead .v{font-size:26px}
+.md h4{margin:14px 0 4px;font-size:13px;font-weight:600}.md h4:first-child{margin-top:0}.md p{margin:4px 0}.md ul{margin:4px 0;padding-left:18px}.md li{margin:2px 0}
+.appr{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px;margin-bottom:12px}
+body[data-brand=anna] .appr{border-color:transparent}
+.appr textarea{min-height:90px;margin:10px 0}
+.agent{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
+body[data-brand=anna] .agent{border-color:transparent}
+.switch{position:relative;width:34px;height:20px;background:var(--line-strong);border-radius:20px;cursor:pointer;flex:none;transition:background .15s}
+.switch.on{background:var(--accent)} .switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.switch.on::after{left:16px}
+.yes{color:var(--ok);font-weight:600}.no{color:var(--faint)}
 @media (max-width:960px){#app{grid-template-columns:1fr}aside{display:none}main{padding:22px 18px}.g4{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}.inbox{grid-template-columns:1fr;height:auto}}
 
 </style>
@@ -243,7 +253,7 @@ const S = { venture: 'all', view: 'overview', ventures: [], session: null, inbox
 const STAGES = ['lead','contacted','meeting','diligence','committed','won'];
 const PIPELINES = ['fundraise','partnership','pilot','grant','customer'];
 const NAV = [
-  ['overview','Overview'],['inbox','Inbox'],['crm','CRM'],['tasks','Tasks'],['x','X'],['telegram','Telegram'],['outbox','Outbox'],['settings','Settings']
+  ['overview','Overview'],['approvals','Approvals'],['inbox','Inbox'],['crm','CRM'],['tasks','Tasks'],['agents','Agents'],['growth','Growth'],['x','X'],['telegram','Telegram'],['outbox','Outbox'],['settings','Settings']
 ];
 const ICONS = {
   overview:'<rect x="2.5" y="2.5" width="4.5" height="4.5"/><rect x="9" y="2.5" width="4.5" height="4.5"/><rect x="2.5" y="9" width="4.5" height="4.5"/><rect x="9" y="9" width="4.5" height="4.5"/>',
@@ -251,12 +261,15 @@ const ICONS = {
   crm:'<circle cx="6" cy="5.5" r="2.3"/><path d="M1.8 13.5c.5-2.3 2.2-3.5 4.2-3.5s3.7 1.2 4.2 3.5"/><path d="M10.5 3.4a2.2 2.2 0 0 1 0 4.2M12 10.3c1.2.4 2 1.5 2.3 3.2"/>',
   tasks:'<rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="m5.3 8.2 1.8 1.8 3.6-3.8"/>',
   x:'<path d="M3 3l10 10M13 3 3 13"/>',
+  approvals:'<path d="M2.5 8.5 6 12l7.5-8"/>',
+  agents:'<rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 2.5V5M6 9h.01M10 9h.01"/>',
+  growth:'<path d="M2 13 6 8.5l3 2.5L14 4"/><path d="M10 4h4v4"/>',
   telegram:'<path d="M14 2.5 1.8 7.3l4.3 1.5L12 4.6 7.4 9.7l.2 3.8 2.1-2.6 2.9 2.1z"/>',
   outbox:'<path d="M14 2 7 9"/><path d="M14 2 9.5 14l-2.5-5-5-2.5z"/>',
   settings:'<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1"/>'
 };
 const CAUSIS_MARK = `<svg width="32" height="32" viewBox="0 0 56 56" aria-hidden="true" style="margin:-3px"><defs><marker id="CM" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="currentColor"/></marker></defs><rect x="8" y="8" width="16" height="16" rx="2.5" fill="#8B1A2F"/><rect x="32" y="8" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".22"/><rect x="8" y="32" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".22"/><rect x="32" y="32" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".12"/><line x1="24" y1="16" x2="31" y2="16" stroke="currentColor" stroke-width="1.3" marker-end="url(#CM)"/><line x1="16" y1="24" x2="16" y2="31" stroke="currentColor" stroke-width="1.3" marker-end="url(#CM)"/></svg>`;
-const TITLES = { overview:'Overview', inbox:'Inbox', crm:'CRM', tasks:'Tasks', x:'X', telegram:'Telegram', outbox:'Outbox', settings:'Settings' };
+const TITLES = { approvals:'Approvals', agents:'Agents', growth:'Growth', overview:'Overview', inbox:'Inbox', crm:'CRM', tasks:'Tasks', x:'X', telegram:'Telegram', outbox:'Outbox', settings:'Settings' };
 function brand(){ if (S.venture==='all') return 'causis'; const v = S.ventures.find(v=>v.id===S.venture); return v?.slug==='anna' ? 'anna' : 'causis'; }
 function favicon(b){
   const svg = b==='anna'
@@ -289,6 +302,19 @@ function ventureSelect(name, val){
 }
 function formData(form){ const o = {}; new FormData(form).forEach((v,k)=>{ o[k] = v === '' ? null : v; }); return o; }
 
+const KIND = { email:'email replies', x_post:'X posts', outreach:'outreach messages', grok_note:'Grok Bot notes', content:'content', other:'other' };
+function md(t){
+  const lines = esc(t||'').split('\n'); let out='', inList=false;
+  for (let l of lines){
+    l = l.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(https?:\/\/[^\s)]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+    if (/^\s*[-*] /.test(l)) { if(!inList){out+='<ul>';inList=true;} out+='<li>'+l.replace(/^\s*[-*] /,'')+'</li>'; continue; }
+    if (inList){ out+='</ul>'; inList=false; }
+    if (/^#{1,3} /.test(l)) out+='<h4>'+l.replace(/^#+ /,'')+'</h4>'; else if (l.trim()) out+='<p>'+l+'</p>';
+  }
+  return out+(inList?'</ul>':'');
+}
+async function copyText(t){ try { await navigator.clipboard.writeText(t); toast('Copied'); } catch { toast('Copy failed, select the text manually'); } }
+
 // ---------- auth ----------
 async function boot(){
   const { data: { session } } = await sb.auth.getSession();
@@ -304,7 +330,9 @@ async function boot(){
   const h = location.hash.slice(1); if (NAV.some(n => n[0] === h)) S.view = h;
   renderChrome(); render();
   sb.channel('live').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'email_messages' }, () => { if (S.view==='inbox'||S.view==='overview') render(); renderCounts(); toast('New email'); })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'outbox' }, () => { if (S.view==='outbox') render(); }).subscribe();
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'outbox' }, () => { if (S.view==='outbox') render(); })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'approvals' }, () => { renderCounts(); if (S.view==='approvals') render(); })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'agent_runs' }, () => { if (S.view==='agents') render(); }).subscribe();
 }
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault(); $('#lerr').textContent = '';
@@ -326,24 +354,25 @@ function renderChrome(){
   $('#ventures').innerHTML = [`<button data-v="all" class="${S.venture==='all'?'on':''}">All</button>`]
     .concat(S.ventures.map(v => `<button data-v="${v.id}" class="${S.venture===v.id?'on':''}"><span class="dot" style="background:${v.color}"></span>${short(v)}</button>`)).join('');
   $('#ventures').querySelectorAll('button').forEach(b => b.onclick = () => { S.venture = b.dataset.v; try{localStorage.setItem('ops', JSON.stringify({venture:S.venture}))}catch{}; renderChrome(); render(); });
-  $('#nav').innerHTML = NAV.map(([k,l],i) => `${i===5?'<div class="navsep"></div>':''}<button data-k="${k}" class="${S.view===k?'on':''}"><svg viewBox="0 0 16 16">${ICONS[k]}</svg>${l}<span class="count" id="c-${k}"></span></button>`).join('');
+  $('#nav').innerHTML = NAV.map(([k,l],i) => `${i===8?'<div class="navsep"></div>':''}<button data-k="${k}" class="${S.view===k?'on':''}"><svg viewBox="0 0 16 16">${ICONS[k]}</svg>${l}<span class="count" id="c-${k}"></span></button>`).join('');
   $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => { S.view = b.dataset.k; location.hash = S.view; renderChrome(); render(); });
   $('#eyebrow').innerHTML = `<span>${S.venture==='all'?'causis research + anna':esc(vname(S.venture).toLowerCase())}</span><span>/</span><span>${TITLES[S.view].toLowerCase()}</span>`;
   renderCounts();
 }
 async function renderCounts(){
-  const [{ count: unread }, { count: tasks }] = await Promise.all([
+  const [{ count: unread }, { count: tasks }, { count: appr }] = await Promise.all([
     vf(sb.from('email_messages').select('id', { count:'exact', head:true }).eq('is_read', false).eq('status','inbox')),
     vf(sb.from('tasks').select('id', { count:'exact', head:true }).neq('status','done')),
+    sb.from('approvals').select('id', { count:'exact', head:true }).eq('status','pending'),
   ]);
   const set = (k,v) => { const el = $('#c-'+k); if (el) el.textContent = v ? v : ''; };
-  set('inbox', unread); set('tasks', tasks);
+  set('inbox', unread); set('tasks', tasks); set('approvals', appr);
 }
 window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (NAV.some(n=>n[0]===h) && h!==S.view){ S.view=h; renderChrome(); render(); } });
 
 function render(){
   const v = $('#view');
-  ({ overview, inbox, crm, tasks, x: xview, telegram, outbox, settings })[S.view](v);
+  ({ overview, approvals, inbox, crm, tasks, agents, growth, x: xview, telegram, outbox, settings })[S.view](v);
 }
 
 // ---------- overview ----------
@@ -351,7 +380,7 @@ function greeting(){ const h = new Date().getHours(); return h<12?'Good morning,
 async function overview(el){
   el.innerHTML = `<h1>${greeting()}</h1><div class="sub">${new Date().toLocaleDateString([], {weekday:'long', day:'numeric', month:'long'})}${S.venture==='all'?'':' · '+esc(vname(S.venture))}</div><div id="ov">Loading</div>`;
   const today = new Date().toISOString().slice(0,10);
-  const [unread, todo, open, due, deals, xacc, recent, act] = await Promise.all([
+  const [unread, todo, open, due, deals, xacc, recent, act, brief, appr] = await Promise.all([
     vf(sb.from('email_messages').select('id',{count:'exact',head:true}).eq('is_read',false).eq('status','inbox')),
     vf(sb.from('email_messages').select('id',{count:'exact',head:true}).eq('status','todo')),
     vf(sb.from('tasks').select('id',{count:'exact',head:true}).neq('status','done')),
@@ -360,11 +389,17 @@ async function overview(el){
     vf(sb.from('x_accounts').select('*')),
     vf(sb.from('email_messages').select('*').eq('status','inbox').order('received_at',{ascending:false}).limit(6)),
     vf(sb.from('activity').select('*').order('created_at',{ascending:false}).limit(8)),
+    sb.from('briefs').select('*').order('created_at',{ascending:false}).limit(1),
+    sb.from('approvals').select('kind').eq('status','pending'),
   ]);
+  const b = (brief.data||[])[0];
+  const ak = (appr.data||[]).reduce((m,a)=>(m[a.kind]=(m[a.kind]||0)+1,m),{});
   const raise = (deals.data||[]).filter(d=>d.pipeline==='fundraise');
   const committed = raise.filter(d=>d.stage==='committed').reduce((a,d)=>a+Number(d.amount_usd||0),0);
   const followers = (xacc.data||[]).reduce((a,x)=>a+(x.followers||0),0);
   $('#ov').innerHTML = `
+    ${b ? `<div class="card" style="margin-bottom:16px"><div class="row" style="margin-bottom:8px"><div class="label grow">Today's brief</div><span class="meta">${fmtDate(b.created_at)}</span></div><div class="md">${md(b.content)}</div></div>` : ''}
+    ${(appr.data||[]).length ? `<div class="card row" style="margin-bottom:16px;cursor:pointer" onclick="S.view='approvals';location.hash='approvals';renderChrome();render()"><div class="grow"><b style="font-weight:500">${(appr.data||[]).length} waiting for your approval</b><div class="meta">${Object.entries(ak).map(([k,n])=>`${n} ${KIND[k]||k}`).join(' · ')}</div></div><button class="btn small primary">Review</button></div>` : ''}
     <div class="grid g4" style="margin-bottom:14px">
       <div class="card stat"><div class="label">Unread email</div><div class="v">${unread.count??0}</div><div class="d">${todo.count??0} marked to do</div></div>
       <div class="card stat"><div class="label">Open tasks</div><div class="v">${open.count??0}</div><div class="d">${(due.data||[]).length} due or overdue</div></div>
@@ -396,9 +431,9 @@ async function inbox(el){
   el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.inbox.status = b.dataset.s; S.inbox.sel = null; inbox(el); });
   $('#compose').onclick = () => compose({});
   $('#syncNow').onclick = async (e) => { e.target.textContent = 'Syncing'; const r = await runJob('email-sync'); e.target.textContent = 'Sync now'; const n = (r.emailSync||[]).reduce((a,x)=>a+(x.inserted||0),0); const er = (r.emailSync||[]).find(x=>x.error||x.skipped); toast(er ? (er.error||er.skipped) : `${n} new`); inbox(el); };
-  const { data, error } = await vf(sb.from('email_messages').select('id,from_name,from_addr,subject,snippet,received_at,is_read,status,venture_id,account_id').eq('status', S.inbox.status).order('received_at',{ascending:false}).limit(200));
+  const { data, error } = await vf(sb.from('email_messages').select('id,from_name,from_addr,subject,snippet,received_at,is_read,status,venture_id,account_id,priority,category,ai_note').eq('status', S.inbox.status).order('received_at',{ascending:false}).limit(200));
   if (err(error)) return;
-  $('#mlist').innerHTML = (data||[]).map(m => `<div class="item ${m.is_read?'':'unread'} ${S.inbox.sel===m.id?'sel':''}" data-id="${m.id}">${vdot(m.venture_id)}<div class="grow" style="min-width:0"><div class="row"><div class="ttl grow">${esc(m.from_name||m.from_addr)}</div><span class="meta">${fmtDate(m.received_at)}</span></div><div class="ttl">${esc(m.subject)}</div><div class="meta ttl">${esc(m.snippet)}</div></div></div>`).join('') || '<div class="empty">Nothing here</div>';
+  $('#mlist').innerHTML = (data||[]).map(m => `<div class="item ${m.is_read?'':'unread'} ${S.inbox.sel===m.id?'sel':''}" data-id="${m.id}">${vdot(m.venture_id)}<div class="grow" style="min-width:0"><div class="row"><div class="ttl grow">${esc(m.from_name||m.from_addr)}</div><span class="meta">${fmtDate(m.received_at)}</span></div><div class="row" style="gap:6px;flex-wrap:nowrap">${m.priority==='high'?'<span class="pill todo">high</span>':''}${m.category&&!['newsletter','notification'].includes(m.category)?`<span class="pill">${esc(m.category)}</span>`:''}<div class="ttl">${esc(m.subject)}</div></div><div class="meta ttl">${esc(m.ai_note||m.snippet)}</div></div></div>`).join('') || '<div class="empty">Nothing here</div>';
   $('#mlist').querySelectorAll('.item').forEach(i => i.onclick = () => { S.inbox.sel = i.dataset.id; $('#mlist').querySelectorAll('.item').forEach(x=>x.classList.toggle('sel', x===i)); i.classList.remove('unread'); openMail(i.dataset.id); });
   if (S.inbox.sel) openMail(S.inbox.sel);
 }
@@ -417,6 +452,7 @@ async function openMail(id){
     </div>
     <h2>${esc(m.subject)}</h2>
     <div class="from"><div class="avatar">${esc((m.from_name||m.from_addr||'?')[0].toUpperCase())}</div><div class="grow"><div><b style="font-weight:500">${esc(m.from_name||m.from_addr)}</b> <span class="meta">&lt;${esc(m.from_addr)}&gt;</span></div><div class="meta">to ${esc((m.to_addrs||[]).join(', '))} · ${esc(m.email_accounts?.label||'')}</div></div><div class="meta">${new Date(m.received_at).toLocaleString([], {weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
+    ${m.ai_note?`<div class="card" style="margin-top:16px;padding:12px 14px;background:var(--surface-2);border:none"><span class="label">Chief of staff</span><div style="margin-top:4px">${esc(m.ai_note)}</div></div>`:''}
     <pre>${esc(m.body_text)}</pre>`;
   $('#reader').querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { await sb.from('email_messages').update({ status: b.dataset.st }).eq('id', id); S.inbox.sel = null; toast('Moved'); inbox($('#view')); });
   $('#reply').onclick = () => compose({ to: m.from_addr, subject: m.subject?.startsWith('Re:') ? m.subject : 'Re: ' + m.subject, in_reply_to: m.message_id, account_id: m.account_id, venture_id: m.venture_id,
@@ -578,6 +614,139 @@ async function xview(el){
     </tbody></table>`;
 }
 
+// ---------- approvals ----------
+async function approvals(el){
+  const f = S.apprKind || 'all';
+  el.innerHTML = `<h1>Approvals</h1><div class="sub">Everything your agents want to send or post waits here</div>
+    <div class="tabs">${[['all','All'],['email','Email replies'],['outreach','Outreach'],['x_post','X posts'],['grok_note','Grok Bot']].map(([k,l])=>`<button data-k="${k}" class="${f===k?'on':''}">${l}</button>`).join('')}</div><div id="al"></div>`;
+  el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.apprKind = b.dataset.k; approvals(el); });
+  let q = sb.from('approvals').select('*, agents(name)').eq('status','pending').order('created_at',{ascending:false}).limit(100);
+  if (f !== 'all') q = q.eq('kind', f);
+  const { data } = await vf(q);
+  $('#al').innerHTML = (data||[]).map(a => {
+    const p = a.payload || {};
+    let actions = '', extra = '';
+    if (a.kind==='email') { extra = `<div class="meta">To ${esc(p.to)} · ${esc(p.subject)}</div>`; actions = `<button class="btn small primary" data-act="send">Send email</button>`; }
+    if (a.kind==='outreach') { extra = `<div class="meta">${esc(p.why||'')}</div><div class="meta" style="margin-top:4px">Route: ${esc(p.route||'')} ${p.url?`· <a href="${esc(p.url)}" target="_blank" rel="noopener">open link</a>`:''}${p.subject?` · Subject: ${esc(p.subject)}`:''}</div>`;
+      actions = `${p.to?`<button class="btn small primary" data-act="send">Send from panel</button>`:''}<button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark sent</button>`; }
+    if (a.kind==='x_post') { extra = `<div class="meta">${esc(p.why||'')}${p.source_url?` · <a href="${esc(p.source_url)}" target="_blank" rel="noopener">source</a>`:''}</div>`;
+      actions = `<a class="btn small primary" data-act="x" href="#" style="text-decoration:none">Open in X</a><button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark posted</button>`; }
+    if (a.kind==='grok_note' || a.kind==='content' || a.kind==='other') actions = `<button class="btn small primary" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
+    return `<div class="appr" data-id="${a.id}"><div class="row">${vdot(a.venture_id)}<b class="grow" style="font-weight:500">${esc(a.title)}</b><span class="pill">${esc(a.agents?.name||'')}</span><span class="meta">${fmtDate(a.created_at)}</span></div>
+      ${extra}<textarea data-body>${esc(a.body||'')}</textarea>${a.kind==='x_post'?`<div class="meta" data-len></div>`:''}
+      <div class="row">${actions}<span class="grow"></span><button class="btn small ghost" data-act="reject">Reject</button></div></div>`;
+  }).join('') || '<div class="list"><div class="empty">Nothing waiting. Your agents will put new drafts here.</div></div>';
+  $('#al').querySelectorAll('.appr').forEach(card => {
+    const id = card.dataset.id, a = (data||[]).find(x=>x.id===id), ta = card.querySelector('[data-body]'), len = card.querySelector('[data-len]');
+    const upd = () => { if (len) { len.textContent = `${ta.value.length} / 280`; len.style.color = ta.value.length>280?'var(--bad)':''; } }; ta.oninput = upd; upd();
+    const finish = async (status, msg) => { await sb.from('approvals').update({ status, body: ta.value, decided_at: new Date().toISOString() }).eq('id', id); toast(msg); card.remove(); renderCounts(); };
+    card.querySelectorAll('[data-act]').forEach(btn => btn.onclick = async (e) => {
+      e.preventDefault(); const act = btn.dataset.act, p = a.payload||{};
+      if (act==='copy') return copyText(ta.value);
+      if (act==='x') { const acct = p.account ? `Post this as @${p.account}. ` : ''; window.open('https://x.com/intent/post?text='+encodeURIComponent(ta.value), '_blank', 'noopener'); toast(acct + 'Mark posted when done'); return; }
+      if (act==='reject') return finish('rejected', 'Rejected');
+      if (act==='done') {
+        if (a.kind==='outreach' && p.deal_id) await sb.from('deals').update({ stage:'contacted', next_step:'Wait for reply', next_step_date: new Date(Date.now()+5*864e5).toISOString().slice(0,10) }).eq('id', p.deal_id);
+        await sb.from('activity').insert({ venture_id: a.venture_id, kind: a.kind, summary: `${a.kind==='x_post'?'Posted':'Sent'}: ${a.title}` });
+        return finish('done', 'Marked done');
+      }
+      if (act==='send') {
+        let acct = p.account_id;
+        if (!acct) { const { data: ac } = await sb.from('email_accounts').select('id').eq('active', true).limit(1); acct = ac?.[0]?.id; }
+        const { error } = await sb.from('outbox').insert({ channel:'email', email_account_id: acct, venture_id: a.venture_id, status:'queued',
+          payload: { to: p.to, subject: p.subject || a.title, body: ta.value, in_reply_to: p.in_reply_to || null, from_name: 'Ceriel van den Adel' } });
+        if (err(error)) return;
+        if (a.kind==='outreach' && p.deal_id) await sb.from('deals').update({ stage:'contacted', next_step:'Wait for reply', next_step_date: new Date(Date.now()+5*864e5).toISOString().slice(0,10) }).eq('id', p.deal_id);
+        await finish('done', 'Sending'); const r = await runJob('email-send'); const x = (r.emailSend||[]).find(x=>x.error); toast(x ? 'Failed: '+x.error : 'Sent');
+      }
+    });
+  });
+}
+
+// ---------- agents ----------
+function sched(a){
+  const h = a.at_hour!=null ? `${String(a.at_hour).padStart(2,'0')}:00` : '';
+  if (a.every_hours >= 168) return `Weekly${a.weekday?' on '+['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'][a.weekday]:''}${h?' at '+h:''}`;
+  if (a.every_hours >= 24) return `Daily${h?' at '+h:''}`;
+  return `Every ${a.every_hours}h`;
+}
+async function agents(el){
+  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">Agents</h1></div><div class="sub">Your AI team. Each runs on a schedule; anything outbound goes to Approvals first.</div>
+    <div class="tabs"><button data-t="team" class="${(S.agTab||'team')==='team'?'on':''}">Team</button><button data-t="knowledge" class="${S.agTab==='knowledge'?'on':''}">Knowledge</button><button data-t="runs" class="${S.agTab==='runs'?'on':''}">Run log</button></div><div id="ag"></div>`;
+  el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.agTab = b.dataset.t; agents(el); });
+  const tab = S.agTab || 'team';
+  if (tab === 'team') {
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+    const [{ data: ags }, { data: runs }] = await Promise.all([sb.from('agents').select('*').order('sort'), sb.from('agent_runs').select('*').gte('started_at', new Date(Date.now()-40*864e5).toISOString()).order('started_at',{ascending:false})]);
+    $('#ag').innerHTML = `<div class="grid g2">${(ags||[]).map(a => {
+      const rs = (runs||[]).filter(r=>r.agent_id===a.id), last = rs[0];
+      const spent = rs.filter(r=>new Date(r.started_at)>=monthStart).reduce((x,r)=>x+Number(r.cost_usd||0),0);
+      const st = !last ? '<span class="pill">not run yet</span>' : last.status==='done' ? '<span class="pill sent">done</span>' : last.status==='running' ? '<span class="pill todo">running</span>' : last.status==='failed' ? '<span class="pill failed">failed</span>' : '<span class="pill">skipped</span>';
+      return `<div class="agent"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(a.name)}</b><div class="switch ${a.enabled?'on':''}" data-tog="${a.id}" title="${a.enabled?'On':'Off'}"></div></div>
+        <div class="meta" style="margin:4px 0 12px">${esc(a.role)}</div>
+        <div class="row meta" style="gap:14px"><span>${sched(a)}</span><span>${esc(a.model.replace('claude-','').replace(/-(\d+)-(\d+)$/,' $1.$2').replace(/^./,c=>c.toUpperCase()))}</span><span>$${spent.toFixed(2)} of $${a.monthly_budget_usd} this month</span></div>
+        <div style="margin:12px 0;min-height:40px">${st} <span class="meta">${last?fmtDate(last.started_at)+' · ':''}${esc(last?.status==='failed'?last.error:last?.summary||'')}</span></div>
+        <div class="row"><button class="btn small primary" data-run="${a.slug}">Run now</button><button class="btn small" data-edit="${a.id}">Edit</button></div></div>`; }).join('')}</div>`;
+    $('#ag').querySelectorAll('[data-tog]').forEach(t => t.onclick = async () => { const a = ags.find(x=>x.id===t.dataset.tog); await sb.from('agents').update({ enabled: !a.enabled }).eq('id', a.id); agents(el); });
+    $('#ag').querySelectorAll('[data-run]').forEach(b => b.onclick = async () => { const { error } = await sb.rpc('start_agent', { p_slug: b.dataset.run, p_trigger: 'manual' }); if (err(error)) return; toast('Started. Results appear here in 1 to 3 minutes'); setTimeout(()=>agents(el), 2500); });
+    $('#ag').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editAgent(ags.find(x=>x.id===b.dataset.edit), el));
+  } else if (tab === 'knowledge') {
+    const { data: kn } = await sb.from('knowledge').select('*').order('key');
+    $('#ag').innerHTML = `<div class="meta" style="margin-bottom:12px">Every agent reads these before it works. Keep them current: positioning, status, who you're already talking to, rules.</div>
+      ${(kn||[]).map(k=>`<div class="card" style="margin-bottom:12px"><div class="row"><b class="grow" style="font-weight:500">${esc(k.title)}</b><span class="meta">updated ${fmtDate(k.updated_at)}</span></div>
+      <textarea data-k="${k.id}" style="min-height:180px;margin:10px 0">${esc(k.content)}</textarea><div class="row" style="justify-content:flex-end"><button class="btn small primary" data-save="${k.id}">Save</button></div></div>`).join('')}`;
+    $('#ag').querySelectorAll('[data-save]').forEach(b => b.onclick = async () => { const { error } = await sb.from('knowledge').update({ content: $(`[data-k="${b.dataset.save}"]`).value, updated_at: new Date().toISOString() }).eq('id', b.dataset.save); if (!err(error)) toast('Saved'); });
+  } else {
+    const { data: runs } = await sb.from('agent_runs').select('*, agents(name)').order('started_at',{ascending:false}).limit(60);
+    $('#ag').innerHTML = `<table><thead><tr><th>Agent</th><th>Started</th><th>Status</th><th>Result</th><th class="num">Searches</th><th class="num">Cost</th></tr></thead><tbody>${(runs||[]).map(r=>`<tr><td>${esc(r.agents?.name)}</td><td>${new Date(r.started_at).toLocaleString([], {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td><span class="pill ${r.status==='done'?'sent':r.status==='failed'?'failed':''}">${r.status}</span></td><td style="max-width:460px">${esc(r.status==='failed'?r.error:r.summary||'')}</td><td class="num">${r.searches||0}</td><td class="num">$${Number(r.cost_usd||0).toFixed(3)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No runs yet</td></tr>'}</tbody></table>`;
+  }
+}
+function editAgent(a, el){
+  openModal(`<h3>${esc(a.name)}</h3><form id="egf" class="fields">
+    <label class="f full">Instructions<textarea name="instructions" style="min-height:140px">${esc(a.instructions)}</textarea></label>
+    <label class="f">Frequency<select name="every_hours">${[[1,'Every hour'],[6,'Every 6 hours'],[24,'Daily'],[168,'Weekly']].map(([v,l])=>`<option value="${v}" ${v==a.every_hours?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="f">At (hour, Amsterdam)<input type="number" min="0" max="23" name="at_hour" value="${a.at_hour??''}"></label>
+    <label class="f">Weekday (weekly only)<select name="weekday"><option value="">Any</option>${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d,i)=>`<option value="${i+1}" ${a.weekday==i+1?'selected':''}>${d}</option>`).join('')}</select></label>
+    <label class="f">Model<select name="model">${[['claude-sonnet-5-5','Sonnet (balanced)'],['claude-opus-5-5','Opus (best, pricier)'],['claude-haiku-5-5','Haiku (fast, cheap)']].map(([v,l])=>`<option value="${v}" ${v===a.model?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="f">Monthly budget (USD)<input type="number" min="0" step="1" name="monthly_budget_usd" value="${a.monthly_budget_usd}"></label>
+    <div class="row full" style="justify-content:flex-end"><button class="btn primary">Save</button></div></form>`);
+  $('#egf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target);
+    const row = { instructions: f.instructions||'', every_hours: Number(f.every_hours), at_hour: f.at_hour===null?null:Number(f.at_hour), weekday: f.weekday===null?null:Number(f.weekday), model: f.model, monthly_budget_usd: Number(f.monthly_budget_usd) };
+    const { error } = await sb.from('agents').update(row).eq('id', a.id); if (err(error)) return; closeModal(); toast('Saved'); agents(el); };
+}
+
+// ---------- growth ----------
+async function growth(el){
+  el.innerHTML = `<h1>Growth</h1><div class="sub">Search and AI-answer visibility, updated weekly by the SEO + AEO agent</div><div id="gr">Loading</div>`;
+  const [{ data: prompts }, { data: results }, { data: audits }] = await Promise.all([
+    vf(sb.from('aeo_prompts').select('*').eq('active', true).order('created_at')),
+    sb.from('aeo_results').select('*').order('at',{ascending:false}).limit(300),
+    sb.from('seo_audits').select('*').order('at',{ascending:false}).limit(20),
+  ]);
+  const latest = id => (results||[]).filter(r=>r.prompt_id===id);
+  const sites = [...new Set((audits||[]).map(a=>a.site))].map(s => (audits||[]).find(a=>a.site===s));
+  const yn = v => v==null ? '<span class="no">-</span>' : v ? '<span class="yes">yes</span>' : '<span class="no">no</span>';
+  $('#gr').innerHTML = `
+    <div class="row" style="margin-bottom:8px"><div class="label grow">AI answers: are we mentioned?</div><button class="btn small" id="addP">Add question</button></div>
+    <table style="margin-bottom:26px"><thead><tr><th>Question people ask AI</th><th>Causis</th><th>Anna</th><th>Named instead</th><th>Checked</th></tr></thead><tbody>
+    ${(prompts||[]).map(p=>{ const r = latest(p.id)[0]; return `<tr class="click" data-p="${p.id}"><td style="max-width:420px">${esc(p.prompt)}</td><td>${yn(r?.mentioned_causis)}</td><td>${yn(r?.mentioned_anna)}</td><td>${(r?.competitors||[]).slice(0,5).map(c=>`<span class="pill">${esc(c)}</span>`).join(' ')}</td><td>${r?fmtDate(r.at):'not yet'}</td></tr>`; }).join('')}
+    </tbody></table>
+    <div class="label" style="margin-bottom:8px">Website health</div>
+    ${sites.length ? `<div class="grid g2">${sites.map(a=>{ const c = a.checks||{}; const chk = (k,l) => `<div class="row" style="gap:8px"><span class="${c[k]?'yes':'no'}" style="width:14px">${c[k]?'✓':'✕'}</span>${l}</div>`;
+      return `<div class="card"><div class="row"><a class="grow" href="${esc(a.site)}" target="_blank" rel="noopener" style="font-weight:500">${esc(a.site.replace('https://',''))}</a><div class="stat"><div class="v" style="margin:0;font-size:28px">${a.score}</div></div></div>
+      <div class="meta" style="margin:2px 0 12px">Checked ${fmtDate(a.at)}</div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px">${chk('title_ok','Title length')}${chk('description_ok','Meta description')}${chk('single_h1','One H1')}${chk('open_graph','Share preview (OG)')}${chk('canonical','Canonical URL')}${chk('has_structured_data','Structured data')}${chk('sitemap','Sitemap')}${chk('robots_txt','robots.txt')}${chk('llms_txt','llms.txt (for AI)')}${chk('enough_text','Enough text')}</div>
+      <div class="label" style="margin:16px 0 6px">Top fixes</div>${(a.recommendations||[]).map((r,i)=>`<div style="margin-bottom:8px"><b style="font-weight:500">${i+1}. ${esc(r.title)}</b><div class="meta">${esc(r.how||'')}</div></div>`).join('') || '<div class="meta">None yet</div>'}</div>`; }).join('')}</div>`
+      : '<div class="list"><div class="empty">No audit yet. Run the SEO + AEO agent from Agents.</div></div>'}`;
+  $('#gr').querySelectorAll('[data-p]').forEach(r => r.onclick = () => { const res = latest(r.dataset.p); const p = prompts.find(x=>x.id===r.dataset.p);
+    openModal(`<h3>${esc(p.prompt)}</h3>${res.slice(0,3).map(x=>`<div class="label" style="margin:12px 0 4px">${esc(x.engine)} · ${fmtDate(x.at)}</div><div class="md">${md(x.excerpt)}</div>`).join('') || '<div class="meta">Not checked yet</div>'}
+      <div class="row" style="margin-top:16px"><button class="btn small" id="rmP">Stop tracking</button></div>`);
+    $('#rmP').onclick = async () => { await sb.from('aeo_prompts').update({ active:false }).eq('id', p.id); closeModal(); growth(el); }; });
+  $('#addP').onclick = () => { openModal(`<h3>Track a question</h3><form id="pf2" class="fields"><label class="f full">What would a potential user or investor ask an AI assistant?<input name="prompt" required></label>
+      <label class="f">Venture${ventureSelect('venture_id', S.venture!=='all'?S.venture:S.ventures[0]?.id)}</label><div class="row full" style="justify-content:flex-end"><button class="btn primary">Add</button></div></form>`);
+    $('#pf2').onsubmit = async e => { e.preventDefault(); const f = formData(e.target); await sb.from('aeo_prompts').insert(f); closeModal(); growth(el); }; };
+}
+
 // ---------- telegram ----------
 function telegram(el){
   el.innerHTML = `<h1>Telegram</h1><div class="sub">Coming next</div><div class="card" style="max-width:560px">Your personal Telegram account will sync here: tracked chats per venture, unread counts and replies from the panel. This needs a small always-on worker, which we'll set up once you're ready.</div>`;
@@ -603,6 +772,8 @@ async function settings(el){
       <td>${!a.active?'<span class="pill">off</span>':a.last_error?`<span class="pill failed">error</span><div style="color:var(--bad);font-size:12px">${esc(a.last_error)}</div>`:a.last_synced_at?'<span class="pill sent">ok</span>':'<span class="pill">waiting</span>'}</td>
       <td>${a.last_synced_at?fmtDate(a.last_synced_at):''}</td><td style="white-space:nowrap"><button class="btn small primary" data-pw="${a.id}" data-addr="${esc(a.address)}">Set password</button> <button class="btn small" data-tog="${a.id}" data-on="${a.active}">${a.active?'Turn off':'Turn on'}</button></td></tr>`).join('')}</tbody></table>
     <p style="color:var(--muted);font-size:12.5px;max-width:720px">Mailbox passwords are stored encrypted in the Supabase vault. The panel can save them but never read them back.</p>
+    <div class="row" style="margin:26px 0 8px"><div class="label grow">AI model (agents)</div><span id="aitok"></span><button class="btn small primary" id="setAI">Set Anthropic API key</button></div>
+    <div class="card meta" style="margin-bottom:6px">Your agents run on Claude through the Anthropic API. Create a key at console.anthropic.com under API keys. Spending per agent is capped in Agents.</div>
     <div class="row" style="margin:26px 0 8px"><div class="label grow">X accounts</div><span id="xtok"></span><button class="btn small primary" id="setX">Set X API token</button></div>
     <table><thead><tr><th>Handle</th><th>Venture</th><th>Followers</th><th>Last update</th></tr></thead><tbody>${(xacc||[]).map(x=>`<tr><td>@${esc(x.handle)}</td><td>${vdot(x.venture_id)} ${esc(vname(x.venture_id))}</td><td>${fmtNum(x.followers)}</td><td>${x.last_synced_at?fmtDate(x.last_synced_at):'waiting for token'}</td></tr>`).join('')}</tbody></table>
     <div class="label" style="margin:22px 0 8px">Background jobs</div>
@@ -616,6 +787,14 @@ async function settings(el){
       toast(x?.error ? 'Login failed: ' + x.error : `Connected. ${x?.inserted ?? 0} emails imported`); settings(el); renderCounts(); };
   });
   sb.rpc('app_secret_set', { p_name: 'x_bearer' }).then(({ data }) => { $('#xtok').innerHTML = data ? '<span class="pill sent">token saved</span>' : '<span class="pill failed">no token</span>'; });
+  sb.rpc('app_secret_set', { p_name: 'anthropic' }).then(({ data }) => { $('#aitok').innerHTML = data ? '<span class="pill sent">key saved</span>' : '<span class="pill failed">no key</span>'; });
+  $('#setAI').onclick = () => {
+    openModal(`<h3>Anthropic API key</h3><form id="af2" class="fields"><div class="full meta">Starts with sk-ant-. Stored encrypted; the panel can't show it again.</div>
+      <label class="f full">API key<input type="password" name="t" autocomplete="off" required></label>
+      <div class="row full" style="justify-content:flex-end"><button class="btn primary">Save</button></div></form>`);
+    $('#af2').onsubmit = async e => { e.preventDefault(); const { error } = await sb.rpc('set_app_secret', { p_name: 'anthropic', p_value: e.target.t.value.trim() });
+      if (err(error)) return; closeModal(); toast('Saved. Agents can run now'); settings(el); };
+  };
   $('#setX').onclick = () => {
     openModal(`<h3>X API token</h3><form id="xf" class="fields"><div class="full meta">The Bearer Token from your app at developer.x.com, under Keys and tokens. Read only: it can't post or change anything.</div>
       <label class="f full">Bearer token<input type="password" name="t" autocomplete="off" required></label>
