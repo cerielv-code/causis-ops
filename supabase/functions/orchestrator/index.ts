@@ -40,13 +40,15 @@ const TOOLS = [
   { name: "x_stats", description: "X follower counts and recent post engagement for our accounts.", input_schema: { type: "object", properties: {} } },
   { name: "agents_status", description: "The AI agents, their schedules, last runs, results and spend this month.", input_schema: { type: "object", properties: {} } },
   { name: "list_approvals", description: "Items waiting for Ceriel's approval.", input_schema: { type: "object", properties: {} } },
-  { name: "read_knowledge", description: "Read the company knowledge docs every agent uses (keys: causis, anna, fundraising, voice).", input_schema: { type: "object", properties: {} } },
+  { name: "read_knowledge", description: "Read the company brain documents every agent uses (keys: causis, anna, team, fundraising, links, voice).", input_schema: { type: "object", properties: {} } },
+  { name: "list_status", description: "The status board: every product, research track, program, partner, infra item and growth initiative with status, summary, next step, owner and links.", input_schema: { type: "object", properties: { area: { type: "string", enum: ["product", "research", "program", "partner", "infra", "growth"] } } } },
+  { name: "update_status", description: "Update a status board item by id (status, summary, next step, owner, links), or create one when no id is given.", input_schema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, area: { type: "string", enum: ["product", "research", "program", "partner", "infra", "growth"] }, status: { type: "string", enum: ["idea", "planned", "in progress", "live", "blocked", "paused", "done"] }, summary: { type: "string" }, next_step: { type: "string" }, owner: { type: "string" }, links: { type: "array", items: { type: "object", properties: { label: { type: "string" }, url: { type: "string" } } } }, venture: VENTURE } } },
   { name: "growth_status", description: "Latest SEO audit scores and AI-answer visibility.", input_schema: { type: "object", properties: {} } },
   { name: "create_task", description: "Create a task.", input_schema: { type: "object", required: ["title"], properties: { title: { type: "string" }, notes: { type: "string" }, due_date: { type: "string", description: "YYYY-MM-DD" }, priority: { type: "integer", enum: [1, 2, 3] }, venture: VENTURE } } },
   { name: "update_task", description: "Update or complete a task by id.", input_schema: { type: "object", required: ["id"], properties: { id: { type: "string" }, status: { type: "string", enum: ["todo", "doing", "done"] }, due_date: { type: "string" }, title: { type: "string" }, notes: { type: "string" } } } },
   { name: "upsert_contact", description: "Create a contact, or update one if id is given.", input_schema: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, org: { type: "string" }, role: { type: "string" }, email: { type: "string" }, telegram: { type: "string" }, x_handle: { type: "string" }, linkedin: { type: "string" }, tags: { type: "array", items: { type: "string" } }, notes: { type: "string" }, venture: VENTURE } } },
   { name: "upsert_deal", description: "Create a deal, or update one if id is given (stage, next step, amount, notes).", input_schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" }, pipeline: { type: "string", enum: ["fundraise", "partnership", "pilot", "grant", "customer"] }, stage: { type: "string", enum: ["lead", "contacted", "meeting", "diligence", "committed", "won", "lost", "parked"] }, amount_usd: { type: "number" }, next_step: { type: "string" }, next_step_date: { type: "string" }, notes: { type: "string" }, contact_id: { type: "string" }, venture: VENTURE } } },
-  { name: "update_knowledge", description: "Replace the content of a knowledge doc (causis, anna, fundraising, voice). Read it first and keep what still holds.", input_schema: { type: "object", required: ["key", "content"], properties: { key: { type: "string" }, content: { type: "string" } } } },
+  { name: "update_knowledge", description: "Replace the content of a company brain document (causis, anna, team, fundraising, links, voice). Read it first and keep everything that still holds.", input_schema: { type: "object", required: ["key", "content"], properties: { key: { type: "string" }, content: { type: "string" } } } },
   { name: "run_agent", description: "Start one of the agents now: chief, scout, marketing, seo. Results arrive in 1 to 3 minutes.", input_schema: { type: "object", required: ["slug"], properties: { slug: { type: "string", enum: ["chief", "scout", "marketing", "seo"] } } } },
   { name: "configure_agent", description: "Change an agent's instructions, schedule, model, budget or on/off.", input_schema: { type: "object", required: ["slug"], properties: { slug: { type: "string", enum: ["chief", "scout", "marketing", "seo"] }, instructions: { type: "string" }, enabled: { type: "boolean" }, at_hour: { type: "integer" }, every_hours: { type: "integer" }, monthly_budget_usd: { type: "number" }, model: { type: "string", enum: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"] } } } },
   { name: "draft_email", description: "Draft an email for Ceriel to approve and send. Goes to Approvals, never sent directly.", input_schema: { type: "object", required: ["to", "subject", "body"], properties: { to: { type: "string" }, subject: { type: "string" }, body: { type: "string" }, reply_to_email_id: { type: "string" }, venture: VENTURE } } },
@@ -80,7 +82,14 @@ async function runTool(name: string, i: Record<string, unknown>, actions: Action
     case "x_stats": return { accounts: (await admin.from("x_accounts").select("handle,followers,last_synced_at")).data, recent_posts: (await admin.from("x_posts").select("text,likes,reposts,replies,impressions,created_at,x_accounts(handle)").order("created_at", { ascending: false }).limit(15)).data };
     case "agents_status": return (await admin.from("agents").select("slug,name,enabled,every_hours,at_hour,model,monthly_budget_usd,last_run_at,instructions")).data;
     case "list_approvals": return (await admin.from("approvals").select("id,kind,title,body,created_at").eq("status", "pending").order("created_at", { ascending: false }).limit(40)).data;
-    case "read_knowledge": return (await admin.from("knowledge").select("key,title,content")).data;
+    case "read_knowledge": return (await admin.from("knowledge").select("key,title,content").order("sort")).data;
+    case "list_status": { let q = admin.from("initiatives").select("id,area,name,status,summary,next_step,owner,links,updated_at").order("sort"); if (i.area) q = q.eq("area", s(i.area)); return (await q).data; }
+    case "update_status": {
+      const row: Record<string, unknown> = { updated_at: new Date().toISOString() }; for (const k of ["name", "area", "status", "summary", "next_step", "owner", "links"]) if (i[k] !== undefined) row[k] = typeof i[k] === "string" ? noDash(i[k] as string) : i[k];
+      if (i.venture) row.venture_id = await vId(i.venture as string);
+      const r = i.id ? await admin.from("initiatives").update(row).eq("id", s(i.id)).select("id,name,status").single() : await admin.from("initiatives").insert({ name: "Untitled", area: "product", ...row }).select("id,name,status").single();
+      actions.push({ tool: name, summary: `Status: ${r.data?.name} is ${r.data?.status}` }); return r.data ?? r.error;
+    }
     case "growth_status": return { seo: (await admin.from("seo_audits").select("site,score,recommendations,at").order("at", { ascending: false }).limit(2)).data, aeo: (await admin.from("aeo_results").select("mentioned_causis,mentioned_anna,competitors,at,aeo_prompts(prompt)").order("at", { ascending: false }).limit(10)).data };
     case "create_task": {
       const { data } = await admin.from("tasks").insert({ title: s(i.title), notes: i.notes ?? null, due_date: i.due_date ?? null, priority: i.priority ?? 2, venture_id: await vId(i.venture as string) }).select("id,title").single();
@@ -154,14 +163,18 @@ Deno.serve(async (req) => {
   const history = (hist ?? []).reverse().map((m) => ({ role: m.role, content: m.content }));
   while (history.length && history[0].role !== "user") history.shift();
 
-  const { data: kn } = await admin.from("knowledge").select("title,content").in("key", ["causis", "anna"]);
+  const { data: kn } = await admin.from("knowledge").select("title,content").in("key", ["causis", "anna", "team", "links"]).order("sort");
+  const { data: inits } = await admin.from("initiatives").select("area,name,status,next_step").order("sort");
   const { data: brief } = await admin.from("briefs").select("content,created_at").order("created_at", { ascending: false }).limit(1).maybeSingle();
   const system = `You are the orchestrator of Causis Research and its product Anna: Ceriel van den Adel's chief operator, working inside his private control panel. Now: ${today()} (Amsterdam).
-You can look anything up with your tools and act on internal things directly (tasks, contacts, deals, knowledge, agents). Anything that leaves the company (email, X, Telegram) you only draft into Approvals; say so when you do it. Use web search for outside facts.
+You can look anything up with your tools and act on internal things directly (tasks, contacts, deals, the status board, the company brain documents, agents). When Ceriel tells you something changed (a status, a decision, a new link or partner), update the status board or the right brain document right away so every agent knows. Anything that leaves the company (email, X, Telegram) you only draft into Approvals; say so when you do it. Use web search for outside facts.
 Be brief and concrete. Lead with the answer or what you did. Use short lists when useful. Never invent facts, names, numbers or emails: look them up or say you don't know. Never use em dashes or en dashes.
 
 # Company context
 ${(kn ?? []).map((k) => `## ${k.title}\n${k.content}`).join("\n\n")}
+
+# Status board (use list_status for details and ids)
+${(inits ?? []).map((x) => `- [${x.area}] ${x.name}: ${x.status}${x.next_step ? `, next: ${x.next_step}` : ""}`).join("\n")}
 
 # Today's brief
 ${brief?.content ?? "No brief yet today."}`;

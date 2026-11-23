@@ -253,7 +253,7 @@ const S = { venture: 'all', view: 'overview', ventures: [], session: null, inbox
 const STAGES = ['lead','contacted','meeting','diligence','committed','won'];
 const PIPELINES = ['fundraise','partnership','pilot','grant','customer'];
 const NAV = [
-  ['overview','Overview'],['approvals','Approvals'],['inbox','Inbox'],['crm','CRM'],['tasks','Tasks'],['agents','Agents'],['growth','Growth'],['x','X'],['telegram','Telegram'],['outbox','Outbox'],['settings','Settings']
+  ['overview','Overview'],['approvals','Approvals'],['inbox','Inbox'],['crm','CRM'],['tasks','Tasks'],['brain','Brain'],['agents','Agents'],['growth','Growth'],['x','X'],['telegram','Telegram'],['outbox','Outbox'],['settings','Settings']
 ];
 const ICONS = {
   overview:'<rect x="2.5" y="2.5" width="4.5" height="4.5"/><rect x="9" y="2.5" width="4.5" height="4.5"/><rect x="2.5" y="9" width="4.5" height="4.5"/><rect x="9" y="9" width="4.5" height="4.5"/>',
@@ -262,6 +262,7 @@ const ICONS = {
   tasks:'<rect x="2.5" y="2.5" width="11" height="11" rx="1.5"/><path d="m5.3 8.2 1.8 1.8 3.6-3.8"/>',
   x:'<path d="M3 3l10 10M13 3 3 13"/>',
   approvals:'<path d="M2.5 8.5 6 12l7.5-8"/>',
+  brain:'<path d="M8 2.5c-1.6 0-2.8 1.1-2.9 2.5C3.8 5.2 3 6.3 3 7.5c0 .9.4 1.6 1 2.1-.1 1.6 1.2 3 2.8 3 .5 0 .9-.1 1.2-.3.3.2.7.3 1.2.3 1.6 0 2.9-1.4 2.8-3 .6-.5 1-1.2 1-2.1 0-1.2-.8-2.3-2.1-2.5C10.8 3.6 9.6 2.5 8 2.5z"/><path d="M8 2.5v10.4"/>',
   agents:'<rect x="3" y="5" width="10" height="8" rx="2"/><path d="M8 2.5V5M6 9h.01M10 9h.01"/>',
   growth:'<path d="M2 13 6 8.5l3 2.5L14 4"/><path d="M10 4h4v4"/>',
   telegram:'<path d="M14 2.5 1.8 7.3l4.3 1.5L12 4.6 7.4 9.7l.2 3.8 2.1-2.6 2.9 2.1z"/>',
@@ -269,7 +270,7 @@ const ICONS = {
   settings:'<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1"/>'
 };
 const CAUSIS_MARK = `<svg width="32" height="32" viewBox="0 0 56 56" aria-hidden="true" style="margin:-3px"><defs><marker id="CM" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="currentColor"/></marker></defs><rect x="8" y="8" width="16" height="16" rx="2.5" fill="#8B1A2F"/><rect x="32" y="8" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".22"/><rect x="8" y="32" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".22"/><rect x="32" y="32" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".12"/><line x1="24" y1="16" x2="31" y2="16" stroke="currentColor" stroke-width="1.3" marker-end="url(#CM)"/><line x1="16" y1="24" x2="16" y2="31" stroke="currentColor" stroke-width="1.3" marker-end="url(#CM)"/></svg>`;
-const TITLES = { approvals:'Approvals', agents:'Agents', growth:'Growth', overview:'Overview', inbox:'Inbox', crm:'CRM', tasks:'Tasks', x:'X', telegram:'Telegram', outbox:'Outbox', settings:'Settings' };
+const TITLES = { brain:'Brain', approvals:'Approvals', agents:'Agents', growth:'Growth', overview:'Overview', inbox:'Inbox', crm:'CRM', tasks:'Tasks', x:'X', telegram:'Telegram', outbox:'Outbox', settings:'Settings' };
 function brand(){ if (S.venture==='all') return 'causis'; const v = S.ventures.find(v=>v.id===S.venture); return v?.slug==='anna' ? 'anna' : 'causis'; }
 function favicon(b){
   const svg = b==='anna'
@@ -360,7 +361,7 @@ function renderChrome(){
   $('#ventures').innerHTML = [`<button data-v="all" class="${S.venture==='all'?'on':''}">All</button>`]
     .concat(S.ventures.map(v => `<button data-v="${v.id}" class="${S.venture===v.id?'on':''}"><span class="dot" style="background:${v.color}"></span>${short(v)}</button>`)).join('');
   $('#ventures').querySelectorAll('button').forEach(b => b.onclick = () => { S.venture = b.dataset.v; try{localStorage.setItem('ops', JSON.stringify({venture:S.venture}))}catch{}; renderChrome(); render(); });
-  $('#nav').innerHTML = NAV.map(([k,l],i) => `${i===8?'<div class="navsep"></div>':''}<button data-k="${k}" class="${S.view===k?'on':''}"><svg viewBox="0 0 16 16">${ICONS[k]}</svg>${l}<span class="count" id="c-${k}"></span></button>`).join('');
+  $('#nav').innerHTML = NAV.map(([k,l],i) => `${i===9?'<div class="navsep"></div>':''}<button data-k="${k}" class="${S.view===k?'on':''}"><svg viewBox="0 0 16 16">${ICONS[k]}</svg>${l}<span class="count" id="c-${k}"></span></button>`).join('');
   $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => { S.view = b.dataset.k; location.hash = S.view; renderChrome(); render(); });
   $('#eyebrow').innerHTML = `<span>${S.venture==='all'?'causis research + anna':esc(vname(S.venture).toLowerCase())}</span><span>/</span><span>${TITLES[S.view].toLowerCase()}</span>`;
   renderCounts();
@@ -378,7 +379,7 @@ window.addEventListener('hashchange', () => { const h = location.hash.slice(1); 
 
 function render(){
   const v = $('#view');
-  ({ overview, approvals, inbox, crm, tasks, agents, growth, x: xview, telegram, outbox, settings })[S.view](v);
+  ({ overview, approvals, inbox, crm, tasks, brain, agents, growth, x: xview, telegram, outbox, settings })[S.view](v);
 }
 
 // ---------- overview ----------
@@ -761,7 +762,7 @@ async function agents(el){
     $('#ag').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editAgent(ags.find(x=>x.id===b.dataset.edit), el));
   } else if (tab === 'knowledge') {
     const { data: kn } = await sb.from('knowledge').select('*').order('key');
-    $('#ag').innerHTML = `<div class="meta" style="margin-bottom:12px">Every agent reads these before it works. Keep them current: positioning, status, who you're already talking to, rules.</div>
+    $('#ag').innerHTML = `<div class="meta" style="margin-bottom:12px">Every agent reads these before it works. The full company brain, including the status board, lives on the <a href="#brain">Brain</a> page.</div>
       ${(kn||[]).map(k=>`<div class="card" style="margin-bottom:12px"><div class="row"><b class="grow" style="font-weight:500">${esc(k.title)}</b><span class="meta">updated ${fmtDate(k.updated_at)}</span></div>
       <textarea data-k="${k.id}" style="min-height:180px;margin:10px 0">${esc(k.content)}</textarea><div class="row" style="justify-content:flex-end"><button class="btn small primary" data-save="${k.id}">Save</button></div></div>`).join('')}`;
     $('#ag').querySelectorAll('[data-save]').forEach(b => b.onclick = async () => { const { error } = await sb.from('knowledge').update({ content: $(`[data-k="${b.dataset.save}"]`).value, updated_at: new Date().toISOString() }).eq('id', b.dataset.save); if (!err(error)) toast('Saved'); });
@@ -782,6 +783,53 @@ function editAgent(a, el){
   $('#egf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target);
     const row = { instructions: f.instructions||'', every_hours: Number(f.every_hours), at_hour: f.at_hour===null?null:Number(f.at_hour), weekday: f.weekday===null?null:Number(f.weekday), model: f.model, monthly_budget_usd: Number(f.monthly_budget_usd) };
     const { error } = await sb.from('agents').update(row).eq('id', a.id); if (err(error)) return; closeModal(); toast('Saved'); agents(el); };
+}
+
+// ---------- brain ----------
+const AREAS = [['product','Products'],['research','Research'],['program','Programs and credits'],['partner','Partners'],['infra','Infrastructure'],['growth','Growth']];
+const STATUSES = ['idea','planned','in progress','live','blocked','paused','done'];
+const stPill = st => `<span class="pill ${st==='live'||st==='done'?'sent':st==='blocked'?'failed':st==='in progress'?'todo':''}">${esc(st)}</span>`;
+async function brain(el){
+  S.brTab = S.brTab || 'status';
+  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">Brain</h1>${S.brTab==='status'?'<button class="btn small primary" id="addInit">Add item</button>':''}</div>
+    <div class="sub">What every agent and the orchestrator know about Causis and Anna. Keep it current, or just tell the orchestrator what changed.</div>
+    <div class="tabs"><button data-t="status" class="${S.brTab==='status'?'on':''}">Status board</button><button data-t="docs" class="${S.brTab==='docs'?'on':''}">Documents</button></div><div id="br"></div>`;
+  el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.brTab = b.dataset.t; brain(el); });
+  if (S.brTab === 'docs') {
+    const { data: kn } = await sb.from('knowledge').select('*').order('sort');
+    $('#br').innerHTML = (kn||[]).map(k=>`<div class="card" style="margin-bottom:12px"><div class="row"><b class="grow" style="font-weight:500">${esc(k.title)}</b><span class="meta">updated ${fmtDate(k.updated_at)}</span></div>
+      <textarea data-k="${k.id}" style="min-height:220px;margin:10px 0">${esc(k.content)}</textarea><div class="row" style="justify-content:flex-end"><button class="btn small primary" data-save="${k.id}">Save</button></div></div>`).join('');
+    $('#br').querySelectorAll('[data-save]').forEach(b => b.onclick = async () => { const { error } = await sb.from('knowledge').update({ content: $(`[data-k="${b.dataset.save}"]`).value, updated_at: new Date().toISOString() }).eq('id', b.dataset.save); if (!err(error)) toast('Saved'); });
+    return;
+  }
+  const { data: items } = await vf(sb.from('initiatives').select('*').order('sort'));
+  const all = items || [];
+  const counts = STATUSES.map(st => [st, all.filter(x=>x.status===st).length]).filter(([,n])=>n);
+  $('#br').innerHTML = `<div class="row" style="gap:8px;margin-bottom:16px">${counts.map(([st,n])=>`${stPill(st)}<span class="meta" style="margin-right:8px">${n}</span>`).join('')}</div>` +
+    AREAS.map(([a,label]) => { const rows = all.filter(x=>x.area===a); if (!rows.length) return '';
+      return `<div class="label" style="margin:18px 0 8px">${label}</div><table><thead><tr><th style="width:22%">Name</th><th style="width:10%">Status</th><th>Now</th><th style="width:24%">Next step</th><th style="width:12%">Owner</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr class="click" data-i="${x.id}"><td>${vdot(x.venture_id)} ${esc(x.name)}${(x.links||[]).length?`<div class="meta">${x.links.map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(l.label)}</a>`).join(' · ')}</div>`:''}</td><td>${stPill(x.status)}</td><td class="meta" style="color:var(--ink-2)">${esc(x.summary||'')}</td><td>${esc(x.next_step||'')}</td><td class="meta">${esc(x.owner||'')}<div style="font-size:11px">${fmtDate(x.updated_at)}</div></td></tr>`).join('')}</tbody></table>`; }).join('');
+  $('#br').querySelectorAll('[data-i]').forEach(r => r.onclick = () => editInit(all.find(x=>x.id===r.dataset.i), el));
+  $('#addInit').onclick = () => editInit(null, el);
+}
+function editInit(x, el){
+  x = x || { area:'product', status:'planned', links:[] };
+  openModal(`<h3>${x.id?esc(x.name):'New item'}</h3><form id="inf" class="fields">
+    <label class="f full">Name<input name="name" value="${esc(x.name)}" required></label>
+    <label class="f">Area<select name="area">${AREAS.map(([a,l])=>`<option value="${a}" ${a===x.area?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="f">Status<select name="status">${STATUSES.map(st=>`<option ${st===x.status?'selected':''}>${st}</option>`).join('')}</select></label>
+    <label class="f">Venture<select name="venture_id"><option value="">Both</option>${S.ventures.map(v=>`<option value="${v.id}" ${v.id===x.venture_id?'selected':''}>${esc(v.name)}</option>`).join('')}</select></label>
+    <label class="f">Owner<input name="owner" value="${esc(x.owner)}"></label>
+    <label class="f full">Where it stands<textarea name="summary" style="min-height:90px">${esc(x.summary)}</textarea></label>
+    <label class="f full">Next step<input name="next_step" value="${esc(x.next_step)}"></label>
+    <label class="f full">Links (one per line: label | url)<textarea name="links" style="min-height:70px">${esc((x.links||[]).map(l=>`${l.label} | ${l.url}`).join('\n'))}</textarea></label>
+    <div class="row full">${x.id?'<button type="button" class="btn" id="indel">Delete</button>':''}<span class="grow"></span><button class="btn primary">Save</button></div></form>`);
+  $('#inf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target);
+    f.links = (f.links||'').split('\n').map(l=>l.split('|').map(t=>t.trim())).filter(p=>p[0]).map(([label,url])=>({ label, url: url || label }));
+    f.updated_at = new Date().toISOString();
+    const { error } = x.id ? await sb.from('initiatives').update(f).eq('id', x.id) : await sb.from('initiatives').insert(f);
+    if (err(error)) return; closeModal(); toast('Saved'); brain(el); };
+  const d = $('#indel'); if (d) d.onclick = async () => { if (d.dataset.sure !== '1') { d.dataset.sure = '1'; d.textContent = 'Click again to delete'; return; } await sb.from('initiatives').delete().eq('id', x.id); closeModal(); brain(el); };
 }
 
 // ---------- growth ----------
