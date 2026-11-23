@@ -32,7 +32,6 @@ async function authorized(req: Request): Promise<boolean> {
   return !!data && data.length > 0;
 }
 
-// ---------- EMAIL ----------
 type Account = {
   id: string; venture_id: string | null; address: string; username: string | null;
   imap_host: string; imap_port: number; smtp_host: string; smtp_port: number;
@@ -69,14 +68,7 @@ async function emailSync(): Promise<unknown[]> {
       const lock = await client.getMailboxLock("INBOX");
       try {
         const mb = client.mailbox as { uidNext: number; exists: number };
-        let range: string;
-        if (!a.last_uid) {
-          // first run: last 50 messages
-          const start = Math.max(1, mb.uidNext - 400);
-          range = `${start}:*`;
-        } else {
-          range = `${a.last_uid + 1}:*`;
-        }
+        const range = a.last_uid ? `${a.last_uid + 1}:*` : `${Math.max(1, mb.uidNext - 400)}:*`;
         const batch: { uid: number; source: Uint8Array; seen: boolean }[] = [];
         for await (const msg of client.fetch(range, { uid: true, source: true, flags: true }, { uid: true })) {
           if (msg.uid <= (a.last_uid ?? 0)) continue;
@@ -166,10 +158,10 @@ async function emailSend(): Promise<unknown[]> {
   return out;
 }
 
-// ---------- X (read-only tracking) ----------
 async function xMetrics(): Promise<unknown[]> {
-  const bearer = Deno.env.get("X_BEARER_TOKEN");
-  if (!bearer) return [{ skipped: "X_BEARER_TOKEN not set" }];
+  let bearer = Deno.env.get("X_BEARER_TOKEN");
+  if (!bearer) { const { data } = await admin.rpc("get_app_secret", { p_name: "x_bearer" }); bearer = (data as string | null) ?? undefined; }
+  if (!bearer) return [{ skipped: "X token not set. Add it in Settings." }];
   const h = { Authorization: `Bearer ${bearer}` };
   const { data: accounts } = await admin.from("x_accounts").select("*");
   const out: unknown[] = [];

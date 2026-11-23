@@ -574,7 +574,7 @@ async function xview(el){
         ${spark(s)}</div>`; }).join('')}</div>
     <div class="label" style="margin-bottom:8px">Recent posts</div>
     <table><thead><tr><th>Account</th><th>Post</th><th class="num">Impr.</th><th class="num">Likes</th><th class="num">Reposts</th><th class="num">Replies</th><th class="num">Bookm.</th><th>Date</th></tr></thead><tbody>
-    ${(posts||[]).map(p=>`<tr><td>@${esc(handle(p.account_id))}</td><td style="max-width:420px"><a href="https://x.com/${esc(handle(p.account_id))}/status/${p.id}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(p.text.slice(0,140))}</a></td><td class="num">${fmtNum(p.impressions)}</td><td class="num">${p.likes}</td><td class="num">${p.reposts}</td><td class="num">${p.replies}</td><td class="num">${p.bookmarks}</td><td>${fmtDate(p.created_at)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No posts synced yet. Add the X bearer token in Settings to start tracking.</td></tr>'}
+    ${(posts||[]).map(p=>`<tr><td>@${esc(handle(p.account_id))}</td><td style="max-width:420px"><a href="https://x.com/${esc(handle(p.account_id))}/status/${p.id}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(p.text.slice(0,140))}</a></td><td class="num">${fmtNum(p.impressions)}</td><td class="num">${p.likes}</td><td class="num">${p.reposts}</td><td class="num">${p.replies}</td><td class="num">${p.bookmarks}</td><td>${fmtDate(p.created_at)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No posts synced yet. Add your X API token in Settings to start tracking.</td></tr>'}
     </tbody></table>`;
 }
 
@@ -603,8 +603,8 @@ async function settings(el){
       <td>${!a.active?'<span class="pill">off</span>':a.last_error?`<span class="pill failed">error</span><div style="color:var(--bad);font-size:12px">${esc(a.last_error)}</div>`:a.last_synced_at?'<span class="pill sent">ok</span>':'<span class="pill">waiting</span>'}</td>
       <td>${a.last_synced_at?fmtDate(a.last_synced_at):''}</td><td style="white-space:nowrap"><button class="btn small primary" data-pw="${a.id}" data-addr="${esc(a.address)}">Set password</button> <button class="btn small" data-tog="${a.id}" data-on="${a.active}">${a.active?'Turn off':'Turn on'}</button></td></tr>`).join('')}</tbody></table>
     <p style="color:var(--muted);font-size:12.5px;max-width:720px">Mailbox passwords are stored encrypted in the Supabase vault. The panel can save them but never read them back.</p>
-    <div class="label" style="margin:22px 0 8px">X accounts</div>
-    <table><thead><tr><th>Handle</th><th>Venture</th><th>Followers</th><th>Last update</th></tr></thead><tbody>${(xacc||[]).map(x=>`<tr><td>@${esc(x.handle)}</td><td>${vdot(x.venture_id)} ${esc(vname(x.venture_id))}</td><td>${fmtNum(x.followers)}</td><td>${x.last_synced_at?fmtDate(x.last_synced_at):'waiting for X_BEARER_TOKEN'}</td></tr>`).join('')}</tbody></table>
+    <div class="row" style="margin:26px 0 8px"><div class="label grow">X accounts</div><span id="xtok"></span><button class="btn small primary" id="setX">Set X API token</button></div>
+    <table><thead><tr><th>Handle</th><th>Venture</th><th>Followers</th><th>Last update</th></tr></thead><tbody>${(xacc||[]).map(x=>`<tr><td>@${esc(x.handle)}</td><td>${vdot(x.venture_id)} ${esc(vname(x.venture_id))}</td><td>${fmtNum(x.followers)}</td><td>${x.last_synced_at?fmtDate(x.last_synced_at):'waiting for token'}</td></tr>`).join('')}</tbody></table>
     <div class="label" style="margin:22px 0 8px">Background jobs</div>
     <table><thead><tr><th>Job</th><th>Last run</th><th>Result</th></tr></thead><tbody>${(hb||[]).map(h=>`<tr><td>${esc(h.name)}</td><td>${new Date(h.last_seen).toLocaleString()}</td><td><code style="font-family:var(--mono);font-size:11.5px">${esc(JSON.stringify(h.info).slice(0,220))}</code></td></tr>`).join('')}</tbody></table>`;
   $('#sb').querySelectorAll('[data-pw]').forEach(b => b.onclick = () => {
@@ -615,6 +615,15 @@ async function settings(el){
       if (err(error)) return; closeModal(); toast('Saved. Syncing'); const r = await runJob('email-sync'); const x = (r.emailSync||[]).find(x=>x.account===b.dataset.addr);
       toast(x?.error ? 'Login failed: ' + x.error : `Connected. ${x?.inserted ?? 0} emails imported`); settings(el); renderCounts(); };
   });
+  sb.rpc('app_secret_set', { p_name: 'x_bearer' }).then(({ data }) => { $('#xtok').innerHTML = data ? '<span class="pill sent">token saved</span>' : '<span class="pill failed">no token</span>'; });
+  $('#setX').onclick = () => {
+    openModal(`<h3>X API token</h3><form id="xf" class="fields"><div class="full meta">The Bearer Token from your app at developer.x.com, under Keys and tokens. Read only: it can't post or change anything.</div>
+      <label class="f full">Bearer token<input type="password" name="t" autocomplete="off" required></label>
+      <div class="row full" style="justify-content:flex-end"><button class="btn primary">Save and fetch</button></div></form>`);
+    $('#xf').onsubmit = async e => { e.preventDefault(); const { error } = await sb.rpc('set_app_secret', { p_name: 'x_bearer', p_value: e.target.t.value.trim() });
+      if (err(error)) return; closeModal(); toast('Saved. Fetching X stats'); const r = await runJob('x-metrics'); const x = (r.xMetrics||[]).find(x=>x.error||x.skipped);
+      toast(x ? 'X said: ' + (x.error||x.skipped).slice(0,120) : 'X stats updated'); settings(el); };
+  };
   $('#sb').querySelectorAll('[data-tog]').forEach(b => b.onclick = async () => { await sb.from('email_accounts').update({ active: b.dataset.on !== 'true' }).eq('id', b.dataset.tog); settings(el); });
   $('#addAcct').onclick = () => {
     openModal(`<h3>Add email account</h3><form id="af" class="fields">
