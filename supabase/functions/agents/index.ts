@@ -97,8 +97,8 @@ async function runChief(c: Ctx) {
     admin.from("agent_runs").select("summary,started_at,agents(name)").gte("started_at", new Date(Date.now() - 864e5).toISOString()).eq("status", "done").limit(10),
     admin.from("x_accounts").select("handle,followers"),
   ]);
-  const { data: tgm } = await admin.from("tg_messages").select("text,sender_name,sent_at,tg_chats!inner(title,tracked)").eq("tg_chats.tracked", true).eq("is_outgoing", false).gte("sent_at", new Date(Date.now() - 864e5).toISOString()).order("sent_at", { ascending: false }).limit(60);
-  const tgText = (tgm ?? []).map((m) => `[${(m as unknown as { tg_chats: { title: string } }).tg_chats.title}] ${m.sender_name ?? ""}: ${(m.text ?? "").slice(0, 300)}`).join("\n");
+  const { data: tgm } = await admin.from("tg_msgs").select("text,sender_name,sent_at,tg_dialogs!inner(title,tracked)").eq("tg_dialogs.tracked", true).eq("is_outgoing", false).gte("sent_at", new Date(Date.now() - 864e5).toISOString()).order("sent_at", { ascending: false }).limit(60);
+  const tgText = (tgm ?? []).map((m) => `[${(m as unknown as { tg_dialogs: { title: string } }).tg_dialogs.title}] ${m.sender_name ?? ""}: ${(m.text ?? "").slice(0, 300)}`).join("\n");
   const mailText = (mails ?? []).map((m) => `[${m.id}] ${m.received_at} From: ${m.from_name ?? ""} <${m.from_addr}> Subject: ${m.subject}\n${(m.body_text ?? "").slice(0, 1200)}`).join("\n\n---\n\n");
   const out = await claude({
     model: c.agent.model,
