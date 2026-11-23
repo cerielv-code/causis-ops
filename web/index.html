@@ -404,6 +404,7 @@ async function overview(el){
   const committed = raise.filter(d=>d.stage==='committed').reduce((a,d)=>a+Number(d.amount_usd||0),0);
   const followers = (xacc.data||[]).reduce((a,x)=>a+(x.followers||0),0);
   $('#ov').innerHTML = `
+    <div class="card" id="orch" style="margin-bottom:16px;padding:0;overflow:hidden"></div>
     ${b ? `<div class="card" style="margin-bottom:16px"><div class="row" style="margin-bottom:8px"><div class="label grow">Today's brief</div><span class="meta">${fmtDate(b.created_at)}</span></div><div class="md">${md(b.content)}</div></div>` : ''}
     ${(appr.data||[]).length ? `<div class="card row" style="margin-bottom:16px;cursor:pointer" onclick="S.view='approvals';location.hash='approvals';renderChrome();render()"><div class="grow"><b style="font-weight:500">${(appr.data||[]).length} waiting for your approval</b><div class="meta">${Object.entries(ak).map(([k,n])=>`${n} ${KIND[k]||k}`).join(' · ')}</div></div><button class="btn small primary">Review</button></div>` : ''}
     <div class="grid g4" style="margin-bottom:14px">
@@ -426,6 +427,30 @@ async function overview(el){
     </div>
     <div class="label" style="margin:22px 0 8px">Activity</div>
     <div class="list">${(act.data||[]).map(a=>`<div class="item">${vdot(a.venture_id)}<div class="grow">${esc(a.summary)}</div><span class="meta">${fmtDate(a.created_at)}</span></div>`).join('') || '<div class="empty">No activity yet</div>'}</div>`;
+  orchestratorChat();
+}
+
+async function orchestratorChat(){
+  const box = $('#orch'); if (!box) return;
+  const { data: hist } = await sb.from('chat_messages').select('*').order('created_at',{ascending:false}).limit(12);
+  const msgs = (hist||[]).reverse();
+  const bubble = m => `<div style="display:flex;flex-direction:column;align-items:${m.role==='user'?'flex-end':'flex-start'}"><div style="max-width:85%;padding:10px 14px;border-radius:var(--radius-sm);${m.role==='user'?'background:var(--ink);color:var(--bg)':'background:var(--surface-2)'}">${m.role==='user'?`<div style="white-space:pre-wrap">${esc(m.content)}</div>`:`<div class="md">${md(m.content)}</div>`}</div>${(m.actions||[]).length?`<div class="row" style="gap:6px;margin-top:6px;max-width:85%">${m.actions.map(a=>`<span class="pill sent">${esc(a.summary)}</span>`).join('')}</div>`:''}</div>`;
+  box.innerHTML = `<div class="row" style="padding:14px 18px;border-bottom:1px solid var(--line)"><div class="grow"><b style="font-weight:500">Orchestrator</b><div class="meta">Ask anything, or tell it what to do. It drafts anything outbound into Approvals.</div></div>${msgs.length?'<button class="btn small ghost" id="orchClear">Clear</button>':''}</div>
+    <div id="orchLog" style="max-height:420px;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">${msgs.map(bubble).join('') || `<div class="meta">Try: "What needs my attention today?", "Who from the Scout leads fits Anna best? Draft an intro to the top one", "Move Ethereal to meeting and add a task to send the deck Friday", "Run Scout focused on crypto x AI angels".</div>`}</div>
+    <form id="orchF" class="row" style="padding:12px 18px;border-top:1px solid var(--line);flex-wrap:nowrap"><textarea name="m" placeholder="Message the orchestrator" style="min-height:44px;height:44px;flex:1"></textarea><button class="btn primary">Send</button></form>`;
+  const log = $('#orchLog'); log.scrollTop = log.scrollHeight;
+  const c = $('#orchClear'); if (c) c.onclick = async () => { if (c.dataset.sure !== '1') { c.dataset.sure = '1'; c.textContent = 'Click again to clear'; return; } await sb.from('chat_messages').delete().gte('created_at','1970-01-01'); orchestratorChat(); };
+  const ta = $('#orchF textarea'); ta.onkeydown = e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); $('#orchF').requestSubmit(); } };
+  $('#orchF').onsubmit = async e => {
+    e.preventDefault(); const m = ta.value.trim(); if (!m) return; ta.value = '';
+    log.insertAdjacentHTML('beforeend', bubble({ role:'user', content: m }) + `<div class="meta" id="orchWait">Working on it...</div>`); log.scrollTop = log.scrollHeight;
+    const { data: { session } } = await sb.auth.getSession();
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/orchestrator`, { method:'POST', headers:{ Authorization:`Bearer ${session.access_token}`, apikey: SUPABASE_KEY, 'Content-Type':'application/json' }, body: JSON.stringify({ message: m }) });
+      const j = await r.json(); if (!r.ok) { $('#orchWait').textContent = j.error || 'Failed'; return; }
+    } catch (err) { $('#orchWait').textContent = 'Connection failed: ' + err.message; return; }
+    orchestratorChat(); renderCounts();
+  };
 }
 
 // ---------- inbox ----------
@@ -666,7 +691,7 @@ async function approvals(el){
     if (a.kind==='x_post') { extra = `<div class="meta">${esc(p.why||'')}${p.source_url?` · <a href="${esc(p.source_url)}" target="_blank" rel="noopener">source</a>`:''}</div>`;
       actions = `<a class="btn small primary" data-act="x" href="#" style="text-decoration:none">Open in X</a><button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark posted</button>`; }
     if (a.kind==='grok_note') actions = `${(S.gbots||[]).filter(b=>b.webhook_url).map(b=>`<button class="btn small primary" data-act="grok" data-bot="${b.id}">Send to ${esc(b.name)}</button>`).join('')}<button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
-    if (a.kind==='content' || a.kind==='other') actions = `<button class="btn small primary" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
+    if (a.kind==='content' || a.kind==='other') actions = p.channel==='telegram' ? `<button class="btn small primary" data-act="tg">Send on Telegram</button><button class="btn small" data-act="copy">Copy</button>` : `<button class="btn small primary" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
     return `<div class="appr" data-id="${a.id}"><div class="row">${vdot(a.venture_id)}<b class="grow" style="font-weight:500">${esc(a.title)}</b><span class="pill">${esc(a.agents?.name||'')}</span><span class="meta">${fmtDate(a.created_at)}</span></div>
       ${extra}<textarea data-body>${esc(a.body||'')}</textarea>${a.kind==='x_post'?`<div class="meta" data-len></div>`:''}
       <div class="row">${actions}<span class="grow"></span><button class="btn small ghost" data-act="reject">Reject</button></div></div>`;
@@ -680,6 +705,7 @@ async function approvals(el){
       if (act==='copy') return copyText(ta.value);
       if (act==='x') { const acct = p.account ? `Post this as @${p.account}. ` : ''; window.open('https://x.com/intent/post?text='+encodeURIComponent(ta.value), '_blank', 'noopener'); toast(acct + 'Mark posted when done'); return; }
       if (act==='reject') return finish('rejected', 'Rejected');
+      if (act==='tg') { btn.textContent = 'Sending'; const r = await tgCall('send', { account_id: p.account_id, chat_id: p.chat_id, text: ta.value }); if (r.error) { btn.textContent = 'Retry'; return toast('Failed: ' + r.error); } return finish('done', 'Sent on Telegram'); }
       if (act==='grok') {
         const { data: { session } } = await sb.auth.getSession();
         btn.textContent = 'Sending';
@@ -724,11 +750,12 @@ async function agents(el){
       const rs = (runs||[]).filter(r=>r.agent_id===a.id), last = rs[0];
       const spent = rs.filter(r=>new Date(r.started_at)>=monthStart).reduce((x,r)=>x+Number(r.cost_usd||0),0);
       const st = !last ? '<span class="pill">not run yet</span>' : last.status==='done' ? '<span class="pill sent">done</span>' : last.status==='running' ? '<span class="pill todo">running</span>' : last.status==='failed' ? '<span class="pill failed">failed</span>' : '<span class="pill">skipped</span>';
-      return `<div class="agent"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(a.name)}</b><div class="switch ${a.enabled?'on':''}" data-tog="${a.id}" title="${a.enabled?'On':'Off'}"></div></div>
+      const orch = a.slug === 'orchestrator';
+      return `<div class="agent"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(a.name)}</b>${orch?'<span class="pill">on demand</span>':`<div class="switch ${a.enabled?'on':''}" data-tog="${a.id}" title="${a.enabled?'On':'Off'}"></div>`}</div>
         <div class="meta" style="margin:4px 0 12px">${esc(a.role)}</div>
-        <div class="row meta" style="gap:14px"><span>${sched(a)}</span><span>${esc(a.model.replace('claude-','').replace(/-(\d+)-(\d+)$/,' $1.$2').replace(/^./,c=>c.toUpperCase()))}</span><span>$${spent.toFixed(2)} of $${a.monthly_budget_usd} this month</span></div>
+        <div class="row meta" style="gap:14px"><span>${orch?'Runs when you chat':sched(a)}</span><span>${esc(a.model.replace('claude-','').replace(/-(\d+)-(\d+)$/,' $1.$2').replace(/^./,c=>c.toUpperCase()))}</span><span>$${spent.toFixed(2)} of $${a.monthly_budget_usd} this month</span></div>
         <div style="margin:12px 0;min-height:40px">${st} <span class="meta">${last?fmtDate(last.started_at)+' · ':''}${esc(last?.status==='failed'?last.error:last?.summary||'')}</span></div>
-        <div class="row"><button class="btn small primary" data-run="${a.slug}">Run now</button><button class="btn small" data-edit="${a.id}">Edit</button></div></div>`; }).join('')}</div>`;
+        <div class="row">${orch?`<button class="btn small primary" onclick="S.view='overview';location.hash='overview';renderChrome();render()">Open chat</button>`:`<button class="btn small primary" data-run="${a.slug}">Run now</button>`}<button class="btn small" data-edit="${a.id}">Edit</button></div></div>`; }).join('')}</div>`;
     $('#ag').querySelectorAll('[data-tog]').forEach(t => t.onclick = async () => { const a = ags.find(x=>x.id===t.dataset.tog); await sb.from('agents').update({ enabled: !a.enabled }).eq('id', a.id); agents(el); });
     $('#ag').querySelectorAll('[data-run]').forEach(b => b.onclick = async () => { const { error } = await sb.rpc('start_agent', { p_slug: b.dataset.run, p_trigger: 'manual' }); if (err(error)) return; toast('Started. Results appear here in 1 to 3 minutes'); setTimeout(()=>agents(el), 2500); });
     $('#ag').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editAgent(ags.find(x=>x.id===b.dataset.edit), el));
