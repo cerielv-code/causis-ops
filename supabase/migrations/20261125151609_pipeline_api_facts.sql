@@ -26,7 +26,7 @@ update public.contacts c set
   stage = case d.stage when 'won' then 'closed' when 'lost' then 'passed' else d.stage end,
   next_step = coalesce(c.next_step, d.next_step),
   next_step_date = coalesce(c.next_step_date, d.next_step_date),
-  tags = case when d.pipeline = 'grant' and not ('grant' = any(c.tags)) then c.tags || 'grant' else c.tags end,
+  tags = case when d.pipeline = 'grant' and not ('grant' = any(c.tags)) then array_append(c.tags, 'grant') else c.tags end,
   notes = case when d.notes is not null and coalesce(c.notes,'') not like '%' || d.notes || '%' then concat_ws(E'\n', c.notes, d.notes) else c.notes end,
   source = coalesce(c.source, 'scout agent'),
   owner = 'scout',

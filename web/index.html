@@ -212,8 +212,52 @@ body[data-brand=anna] .agent{border-color:transparent}
 .switch.on{background:var(--accent)} .switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
 .switch.on::after{left:16px}
 .yes{color:var(--ok);font-weight:600}.no{color:var(--faint)}
-@media (max-width:960px){#app{grid-template-columns:1fr}aside{display:none}main{padding:22px 18px}.g4{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}.inbox{grid-template-columns:1fr;height:auto}}
+@media (max-width:960px){#app{grid-template-columns:1fr}main{padding:22px 18px}.g4{grid-template-columns:1fr 1fr}.g2{grid-template-columns:1fr}.inbox{grid-template-columns:1fr;height:auto}}
 
+
+/* ops v2: pipeline, approvals, opportunities, facts, spend */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{all:unset;cursor:pointer;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--ink-2);background:var(--surface)}
+.chips.small button{padding:4px 10px;font-size:12px}
+.chips button.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft,transparent)}
+.wrapr{flex-wrap:wrap}
+.funnel{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px}
+.funnel button{all:unset;cursor:pointer;border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;background:var(--surface);display:flex;flex-direction:column}
+.funnel button b{font-size:18px;font-weight:600}.funnel button span{font-size:11.5px;color:var(--muted)}
+.funnel button.on{border-color:var(--accent)}
+.item.pipe{cursor:pointer}.over{color:var(--bad)}.warnt{color:var(--warn)}
+.timeline>div{display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.appr.risk-high{border-left:3px solid var(--bad)}.appr.risk-medium{border-left:3px solid var(--warn)}.appr.approved{border-left:3px solid var(--ok)}
+.chan{font-family:var(--font-label);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--surface-2,var(--hover));color:var(--ink-2)}
+.why{margin-top:8px;font-size:13.5px}.why .label{margin-right:6px}
+.chk{margin-top:8px;font-size:12.5px;padding:7px 10px;border-radius:8px}
+.chk.ok{background:#E3F2EA;color:var(--ok)}.chk.bad{background:#FDE8E4;color:var(--bad)}.chk.bad>div{margin-top:4px}.chk.wait{color:var(--muted);padding-left:0}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn.big{padding:9px 18px}
+.opp{display:flex;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:10px}
+.score{flex:none;width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-weight:600;font-size:15px;background:var(--hover)}
+.score.sh{background:var(--accent);color:#fff}.score.sm{border:1px solid var(--accent);color:var(--accent);background:transparent}
+.meter{height:7px;border-radius:9px;background:var(--hover);overflow:hidden;margin-top:5px}.meter>div{height:100%;background:var(--ok)}.meter>div.warn{background:var(--warn)}.meter>div.full{background:var(--bad)}
+.agent.dim{opacity:.55}
+.tabs .count{margin-left:6px;font-family:var(--font-label);font-size:11px;color:var(--accent)}
+@media (max-width:960px){
+  #app{grid-template-rows:auto 1fr;grid-template-columns:minmax(0,1fr)!important;width:100vw;overflow-x:hidden}
+  #app>*{min-width:0}
+  main{padding:16px 14px 60px}
+  .tabs{overflow-x:auto;white-space:nowrap}
+  .opp{padding:12px}
+  .appr .ttl{white-space:normal}
+  aside{display:flex;flex-direction:column;gap:8px;padding:10px 12px;position:sticky;top:0;z-index:5;border-right:none;border-bottom:1px solid var(--line)}
+  aside .foot{display:none}
+  aside .nav{flex-direction:row;overflow-x:auto;gap:4px;scrollbar-width:none}
+  aside .nav::-webkit-scrollbar{display:none}
+  aside .nav button{flex:none;padding:7px 10px;font-size:13px}
+  aside .navsep{display:none}
+  .funnel{grid-template-columns:repeat(3,1fr)}
+  .appr .acts .btn{flex:1;justify-content:center;text-align:center;padding:11px 10px}
+  .opp .acts .btn{flex:1;text-align:center;justify-content:center}
+  .appr textarea{min-height:140px}
+}
 </style>
 </head>
 <body data-brand="causis">
@@ -253,9 +297,12 @@ const S = { venture: 'all', view: 'overview', ventures: [], session: null, inbox
 const STAGES = ['lead','contacted','meeting','diligence','committed','won'];
 const PIPELINES = ['fundraise','partnership','pilot','grant','customer'];
 const NAV = [
-  ['overview','Overview'],['approvals','Approvals'],['inbox','Inbox'],['crm','CRM'],['tasks','Tasks'],['brain','Brain'],['agents','Agents'],['growth','Growth'],['x','X'],['telegram','Telegram'],['outbox','Outbox'],['settings','Settings']
+  ['overview','Overview'],['approvals','Approvals'],['opps','Opportunities'],['pipeline','Pipeline'],['inbox','Inbox'],['tasks','Tasks'],['facts','Facts sheet'],['agents','Agents'],['brain','Brain'],['growth','Growth'],['x','X'],['telegram','Telegram'],['outbox','Outbox'],['settings','Settings']
 ];
 const ICONS = {
+  opps:'<path d="M8 1.8l1.9 3.9 4.3.6-3.1 3 .7 4.3L8 11.6l-3.8 2 .7-4.3-3.1-3 4.3-.6z"/>',
+  pipeline:'<path d="M2 3h12l-4.5 5.2V13l-3 1.2V8.2z"/>',
+  facts:'<path d="M4 1.8h5.5L12 4.3v9.9H4z"/><path d="M6 7h4M6 9.5h4M6 12h2.5"/>',
   overview:'<rect x="2.5" y="2.5" width="4.5" height="4.5"/><rect x="9" y="2.5" width="4.5" height="4.5"/><rect x="2.5" y="9" width="4.5" height="4.5"/><rect x="9" y="9" width="4.5" height="4.5"/>',
   inbox:'<path d="M2 9.5 3.8 3.5h8.4L14 9.5v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><path d="M2 9.5h3.5l1 1.5h3l1-1.5H14"/>',
   crm:'<circle cx="6" cy="5.5" r="2.3"/><path d="M1.8 13.5c.5-2.3 2.2-3.5 4.2-3.5s3.7 1.2 4.2 3.5"/><path d="M10.5 3.4a2.2 2.2 0 0 1 0 4.2M12 10.3c1.2.4 2 1.5 2.3 3.2"/>',
@@ -270,7 +317,7 @@ const ICONS = {
   settings:'<circle cx="8" cy="8" r="2.2"/><path d="M8 1.8v1.6M8 12.6v1.6M1.8 8h1.6M12.6 8h1.6M3.6 3.6l1.1 1.1M11.3 11.3l1.1 1.1M3.6 12.4l1.1-1.1M11.3 4.7l1.1-1.1"/>'
 };
 const CAUSIS_MARK = `<svg width="32" height="32" viewBox="0 0 56 56" aria-hidden="true" style="margin:-3px"><defs><marker id="CM" markerWidth="4" markerHeight="4" refX="2" refY="2" orient="auto"><path d="M0,0 L4,2 L0,4 Z" fill="currentColor"/></marker></defs><rect x="8" y="8" width="16" height="16" rx="2.5" fill="#8B1A2F"/><rect x="32" y="8" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".22"/><rect x="8" y="32" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".22"/><rect x="32" y="32" width="16" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".12"/><line x1="24" y1="16" x2="31" y2="16" stroke="currentColor" stroke-width="1.3" marker-end="url(#CM)"/><line x1="16" y1="24" x2="16" y2="31" stroke="currentColor" stroke-width="1.3" marker-end="url(#CM)"/></svg>`;
-const TITLES = { brain:'Brain', approvals:'Approvals', agents:'Agents', growth:'Growth', overview:'Overview', inbox:'Inbox', crm:'CRM', tasks:'Tasks', x:'X', telegram:'Telegram', outbox:'Outbox', settings:'Settings' };
+const TITLES = { opps:'Opportunities', pipeline:'Pipeline', crm:'Pipeline', facts:'Facts sheet', brain:'Brain', approvals:'Approvals', agents:'Agents', growth:'Growth', overview:'Overview', inbox:'Inbox', crm:'CRM', tasks:'Tasks', x:'X', telegram:'Telegram', outbox:'Outbox', settings:'Settings' };
 function brand(){ if (S.venture==='all') return 'causis'; const v = S.ventures.find(v=>v.id===S.venture); return v?.slug==='anna' ? 'anna' : 'causis'; }
 function favicon(b){
   const svg = b==='anna'
@@ -372,25 +419,26 @@ function renderChrome(){
   $('#ventures').innerHTML = [`<button data-v="all" class="${S.venture==='all'?'on':''}">All</button>`]
     .concat(S.ventures.map(v => `<button data-v="${v.id}" class="${S.venture===v.id?'on':''}"><span class="dot" style="background:${v.color}"></span>${short(v)}</button>`)).join('');
   $('#ventures').querySelectorAll('button').forEach(b => b.onclick = () => { S.venture = b.dataset.v; try{localStorage.setItem('ops', JSON.stringify({venture:S.venture}))}catch{}; renderChrome(); render(); });
-  $('#nav').innerHTML = NAV.map(([k,l],i) => `${i===9?'<div class="navsep"></div>':''}<button data-k="${k}" class="${S.view===k?'on':''}"><svg viewBox="0 0 16 16">${ICONS[k]}</svg>${l}<span class="count" id="c-${k}"></span></button>`).join('');
+  $('#nav').innerHTML = NAV.map(([k,l],i) => `${k==='x'?'<div class="navsep"></div>':''}<button data-k="${k}" class="${S.view===k?'on':''}"><svg viewBox="0 0 16 16">${ICONS[k]}</svg>${l}<span class="count" id="c-${k}"></span></button>`).join('');
   $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => { S.view = b.dataset.k; location.hash = S.view; renderChrome(); render(); });
   $('#eyebrow').innerHTML = `<span>${S.venture==='all'?'causis research + anna':esc(vname(S.venture).toLowerCase())}</span><span>/</span><span>${TITLES[S.view].toLowerCase()}</span>`;
   renderCounts();
 }
 async function renderCounts(){
-  const [{ count: unread }, { count: tasks }, { count: appr }] = await Promise.all([
+  const [{ count: unread }, { count: tasks }, { count: appr }, { count: opp }] = await Promise.all([
     vf(sb.from('email_messages').select('id', { count:'exact', head:true }).eq('is_read', false).eq('status','inbox')),
     vf(sb.from('tasks').select('id', { count:'exact', head:true }).neq('status','done')),
-    sb.from('approvals').select('id', { count:'exact', head:true }).eq('status','pending'),
+    sb.from('approvals').select('id', { count:'exact', head:true }).in('status',['pending','approved']),
+    sb.from('opportunities').select('id', { count:'exact', head:true }).eq('status','open'),
   ]);
   const set = (k,v) => { const el = $('#c-'+k); if (el) el.textContent = v ? v : ''; };
-  set('inbox', unread); set('tasks', tasks); set('approvals', appr);
+  set('inbox', unread); set('tasks', tasks); set('approvals', appr); set('opps', opp);
 }
-window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (NAV.some(n=>n[0]===h) && h!==S.view){ S.view=h; renderChrome(); render(); } });
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if ((NAV.some(n=>n[0]===h) || h==='crm') && h!==S.view){ S.view=h; renderChrome(); render(); } });
 
 function render(){
   const v = $('#view');
-  ({ overview, approvals, inbox, crm, tasks, brain, agents, growth, x: xview, telegram, outbox, settings })[S.view](v);
+  ({ overview, approvals, opps, pipeline, crm: pipeline, facts, inbox, tasks, brain, agents, growth, x: xview, telegram, outbox, settings })[S.view](v);
 }
 
 // ---------- overview ----------
@@ -403,42 +451,48 @@ async function overview(el){
     vf(sb.from('email_messages').select('id',{count:'exact',head:true}).eq('status','todo')),
     vf(sb.from('tasks').select('id',{count:'exact',head:true}).neq('status','done')),
     vf(sb.from('tasks').select('*').neq('status','done').lte('due_date', today).order('due_date')),
-    vf(sb.from('deals').select('*, contacts(name,org)').not('stage','in','(won,lost,parked)').order('next_step_date',{nullsFirst:false})),
+    sb.from('contacts').select('id,name,org,type,stage,next_step,next_step_date').is('merged_into',null).in('stage',OPEN_STAGES).order('next_step_date',{nullsFirst:false}),
     vf(sb.from('x_accounts').select('*')),
     vf(sb.from('email_messages').select('*').eq('status','inbox').order('received_at',{ascending:false}).limit(6)),
     vf(sb.from('activity').select('*').order('created_at',{ascending:false}).limit(8)),
     sb.from('briefs').select('*').order('created_at',{ascending:false}).limit(1),
-    sb.from('approvals').select('kind').eq('status','pending'),
+    sb.from('approvals').select('kind,channel,risk').eq('status','pending'),
   ]);
+  const [{ data: topOpps }, meter] = await Promise.all([sb.from('opportunities').select('*').eq('status','open').order('score',{ascending:false}).limit(4), spendMeter()]);
   const b = (brief.data||[])[0];
-  const ak = (appr.data||[]).reduce((m,a)=>(m[a.kind]=(m[a.kind]||0)+1,m),{});
-  const raise = (deals.data||[]).filter(d=>d.pipeline==='fundraise');
-  const committed = raise.filter(d=>d.stage==='committed').reduce((a,d)=>a+Number(d.amount_usd||0),0);
+  const ak = (appr.data||[]).reduce((m,a)=>{ const c = chOf(a); m[c]=(m[c]||0)+1; return m; },{});
+  const highRisk = (appr.data||[]).filter(a=>a.risk==='high').length;
+  const inv = (deals.data||[]).filter(d=>d.type==='investor'), part = (deals.data||[]).filter(d=>d.type==='partner');
+  const hot = inv.filter(d=>['meeting','diligence','committed'].includes(d.stage)).length;
   const followers = (xacc.data||[]).reduce((a,x)=>a+(x.followers||0),0);
   $('#ov').innerHTML = `
     <div class="card" id="orch" style="margin-bottom:16px;padding:0;overflow:hidden"></div>
     ${b ? `<div class="card" style="margin-bottom:16px"><div class="row" style="margin-bottom:8px"><div class="label grow">Today's brief</div><span class="meta">${fmtDate(b.created_at)}</span></div><div class="md">${md(b.content)}</div></div>` : ''}
-    ${(appr.data||[]).length ? `<div class="card row" style="margin-bottom:16px;cursor:pointer" onclick="S.view='approvals';location.hash='approvals';renderChrome();render()"><div class="grow"><b style="font-weight:500">${(appr.data||[]).length} waiting for your approval</b><div class="meta">${Object.entries(ak).map(([k,n])=>`${n} ${KIND[k]||k}`).join(' · ')}</div></div><button class="btn small primary">Review</button></div>` : ''}
+    ${(appr.data||[]).length ? `<div class="card row" style="margin-bottom:16px;cursor:pointer" onclick="S.view='approvals';location.hash='approvals';renderChrome();render()"><div class="grow"><b style="font-weight:500">${(appr.data||[]).length} waiting for your approval</b><div class="meta">${Object.entries(ak).map(([k,n])=>`${n} ${CH_LABEL[k]||k}`).join(' · ')}${highRisk?` · <span style="color:var(--bad)">${highRisk} high risk</span>`:''}</div></div><button class="btn small primary">Review</button></div>` : ''}
+    ${(topOpps||[]).length ? `<div class="card" style="margin-bottom:16px"><div class="row" style="margin-bottom:6px"><div class="label grow">Needs your decision</div><button class="btn small" onclick="goto('opps')">All opportunities</button></div>
+      ${topOpps.map(o=>`<div class="row" style="padding:7px 0;border-top:1px solid var(--line);cursor:pointer" onclick="goto('opps')"><div class="score s${o.score>=75?'h':o.score>=50?'m':'l'}" style="width:30px;height:30px;font-size:12px">${o.score}</div><div class="grow" style="min-width:0"><div class="ttl">${esc(o.title)}</div><div class="meta ttl">${esc(o.reason)}</div></div>${o.urgency==='urgent'?'<span class="pill failed">urgent</span>':''}</div>`).join('')}</div>` : ''}
     <div class="grid g4" style="margin-bottom:14px">
       <div class="card stat"><div class="label">Unread email</div><div class="v">${unread.count??0}</div><div class="d">${todo.count??0} marked to do</div></div>
       <div class="card stat"><div class="label">Open tasks</div><div class="v">${open.count??0}</div><div class="d">${(due.data||[]).length} due or overdue</div></div>
-      <div class="card stat"><div class="label">Active fundraise</div><div class="v">${raise.length}</div><div class="d">${usd(committed)||'$0'} committed</div></div>
+      <div class="card stat" style="cursor:pointer" onclick="S.pipe={type:'investor',stage:'open',q:'',flag:''};goto('pipeline')"><div class="label">Investors in play</div><div class="v">${inv.length}</div><div class="d">${hot} in meetings or later · ${part.length} partners</div></div>
       <div class="card stat"><div class="label">X followers</div><div class="v">${fmtNum(followers)}</div><div class="d">${(xacc.data||[]).map(x=>'@'+esc(x.handle)).join(', ')}</div></div>
     </div>
+    <div style="margin-bottom:16px">${meter}</div>
     <div class="grid g2">
       <div>
         <div class="row" style="margin-bottom:8px"><div class="label grow">Latest email</div><button class="btn small" onclick="S.view='inbox';location.hash='inbox';renderChrome();render()">Open inbox</button></div>
         <div class="list">${(recent.data||[]).map(m=>`<div class="item ${m.is_read?'':'unread'}" onclick="S.view='inbox';S.inbox.sel='${m.id}';location.hash='inbox';renderChrome();render()"><div class="grow" style="min-width:0"><div class="row"><div class="ttl grow">${esc(m.from_name||m.from_addr)}</div><span class="meta">${fmtDate(m.received_at)}</span></div><div class="ttl">${esc(m.subject)}</div><div class="meta ttl">${esc(m.snippet)}</div></div></div>`).join('') || '<div class="empty">No email synced yet</div>'}</div>
       </div>
       <div>
-        <div class="row" style="margin-bottom:8px"><div class="label grow">Next steps on deals</div><button class="btn small" onclick="S.view='crm';location.hash='crm';renderChrome();render()">Open CRM</button></div>
-        <div class="list">${(deals.data||[]).filter(d=>d.next_step).slice(0,6).map(d=>`<div class="item" onclick="editDeal('${d.id}')">${vdot(d.venture_id)}<div class="grow" style="min-width:0"><div class="row"><div class="ttl grow">${esc(d.title)}</div><span class="meta">${d.next_step_date?fmtDate(d.next_step_date):''}</span></div><div class="meta ttl">${esc(d.next_step)}</div></div><span class="pill">${d.stage}</span></div>`).join('') || '<div class="empty">No open next steps</div>'}</div>
+        <div class="row" style="margin-bottom:8px"><div class="label grow">Next steps</div><button class="btn small" onclick="goto('pipeline')">Open pipeline</button></div>
+        <div class="list">${(deals.data||[]).filter(d=>d.next_step).slice(0,6).map(d=>`<div class="item" onclick="editContact('${d.id}')"><div class="grow" style="min-width:0"><div class="row"><div class="ttl grow">${esc(d.name)}${d.org?' · '+esc(d.org):''}</div><span class="meta ${d.next_step_date&&d.next_step_date<todayISO()?'over':''}">${d.next_step_date?fmtDate(d.next_step_date):''}</span></div><div class="meta ttl">${esc(d.next_step)}</div></div><span class="pill">${d.stage}</span></div>`).join('') || '<div class="empty">No open next steps</div>'}</div>
         <div class="label" style="margin:16px 0 8px">Due tasks</div>
         <div class="list">${(due.data||[]).slice(0,6).map(t=>`<div class="item">${vdot(t.venture_id)}<div class="grow ttl ${t.priority===1?'p1':''}">${esc(t.title)}</div><span class="meta">${fmtDate(t.due_date)}</span></div>`).join('') || '<div class="empty">Nothing due</div>'}</div>
       </div>
     </div>
     <div class="label" style="margin:22px 0 8px">Activity</div>
     <div class="list">${(act.data||[]).map(a=>`<div class="item">${vdot(a.venture_id)}<div class="grow">${esc(a.summary)}</div><span class="meta">${fmtDate(a.created_at)}</span></div>`).join('') || '<div class="empty">No activity yet</div>'}</div>`;
+  wireCaps(() => overview(el));
   orchestratorChat();
 }
 
@@ -529,51 +583,330 @@ async function compose(o){
   $('#draft').onclick = () => save('draft');
 }
 
-// ---------- CRM ----------
-async function crm(el){
-  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">CRM</h1>
-    <button class="btn small" onclick="editContact()">New contact</button><button class="btn small primary" onclick="editDeal()">New deal</button></div>
-    <div class="tabs"><button data-t="deals" class="${S.crm.tab==='deals'?'on':''}">Pipeline</button><button data-t="contacts" class="${S.crm.tab==='contacts'?'on':''}">Contacts</button></div><div id="crmb"></div>`;
-  el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.crm.tab = b.dataset.t; crm(el); });
-  if (S.crm.tab === 'deals') {
-    const { data } = await vf(sb.from('deals').select('*, contacts(name,org)').eq('pipeline', S.crm.pipeline).order('updated_at',{ascending:false}));
-    const by = s => (data||[]).filter(d=>d.stage===s);
-    $('#crmb').innerHTML = `<div class="row" style="margin-bottom:12px">${PIPELINES.map(p=>`<button class="btn small ${S.crm.pipeline===p?'primary':''}" data-p="${p}">${p}</button>`).join('')}
-      <span class="grow"></span><span class="meta" style="color:var(--muted)">Lost and parked: ${(data||[]).filter(d=>['lost','parked'].includes(d.stage)).length}</span></div>
-      <div class="board">${STAGES.map(s=>`<div class="col" data-stage="${s}"><h4>${s}<span>${by(s).length}</span></h4>${by(s).map(d=>`<div class="deal" draggable="true" data-id="${d.id}"><div class="row">${vdot(d.venture_id)}<div class="grow ttl">${esc(d.title)}</div></div><div class="meta">${esc(d.contacts?.name||'')}</div>${d.amount_usd?`<div class="amt">${usd(d.amount_usd)}</div>`:''}${d.next_step?`<div class="meta ttl" style="margin-top:6px">→ ${esc(d.next_step)}</div>`:''}</div>`).join('')}</div>`).join('')}</div>`;
-    $('#crmb').querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.crm.pipeline = b.dataset.p; crm(el); });
-    $('#crmb').querySelectorAll('.deal').forEach(d => { d.onclick = () => editDeal(d.dataset.id); d.ondragstart = e => e.dataTransfer.setData('id', d.dataset.id); });
-    $('#crmb').querySelectorAll('.col').forEach(c => { c.ondragover = e => { e.preventDefault(); c.classList.add('over'); }; c.ondragleave = () => c.classList.remove('over'); c.ondrop = async e => { e.preventDefault(); const id = e.dataTransfer.getData('id'); await sb.from('deals').update({ stage: c.dataset.stage }).eq('id', id); crm(el); }; });
-  } else {
-    const { data } = await vf(sb.from('contacts').select('*').order('name'));
-    $('#crmb').innerHTML = `<input id="cq" placeholder="Search contacts" style="margin-bottom:10px;max-width:320px">
-      <table><thead><tr><th>Name</th><th>Org</th><th>Role</th><th>Email</th><th>X</th><th>Tags</th><th>Venture</th></tr></thead><tbody id="ctb"></tbody></table>`;
-    const draw = (q='') => { const rows = (data||[]).filter(c => !q || JSON.stringify(c).toLowerCase().includes(q.toLowerCase()));
-      $('#ctb').innerHTML = rows.map(c=>`<tr class="click" data-id="${c.id}"><td>${esc(c.name)}</td><td>${esc(c.org)}</td><td>${esc(c.role)}</td><td>${esc(c.email)}</td><td>${c.x_handle?'@'+esc(c.x_handle.replace('@','')):''}</td><td>${(c.tags||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join(' ')}</td><td>${vdot(c.venture_id)} ${esc(vname(c.venture_id))}</td></tr>`).join('') || `<tr><td colspan="7" class="empty">No contacts yet</td></tr>`;
-      $('#ctb').querySelectorAll('tr.click').forEach(r => r.onclick = () => editContact(r.dataset.id)); };
-    draw(); $('#cq').oninput = e => draw(e.target.value);
-  }
+// ---------- pipeline (one CRM) ----------
+const CTYPES = [['all','All'],['investor','Investors'],['partner','Partners'],['tester','Testers'],['press','Press'],['other','Other']];
+const CSTAGES = ['lead','contacted','replied','meeting','diligence','committed','closed','passed','parked'];
+const OPEN_STAGES = ['lead','contacted','replied','meeting','diligence','committed'];
+const todayISO = () => new Date().toLocaleDateString('en-CA');
+const ago = d => { if (!d) return ''; const s = (Date.now() - new Date(d)) / 1000; if (s < 3600) return Math.max(1, Math.round(s/60)) + 'm ago'; if (s < 86400) return Math.round(s/3600) + 'h ago'; return Math.round(s/86400) + 'd ago'; };
+const stagePill = s => `<span class="pill ${['meeting','diligence','committed','closed'].includes(s)?'sent':s==='replied'?'todo':s==='passed'?'failed':''}">${esc(s)}</span>`;
+function goto(v){ S.view = v; location.hash = v; renderChrome(); render(); }
+
+async function pipeline(el){
+  const P = S.pipe = S.pipe || { type: 'all', stage: 'open', q: '', flag: '' };
+  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">Pipeline</h1><button class="btn small primary" onclick="editContact()">New contact</button></div>
+    <div class="sub">Every investor, partner, tester and press contact in one place. Agents and you write to the same list.</div>
+    <div class="chips" id="pt">${CTYPES.map(([k,l])=>`<button data-t="${k}" class="${P.type===k?'on':''}">${l}</button>`).join('')}</div>
+    <div class="row wrapr" style="margin:10px 0 14px">
+      <input id="pq" placeholder="Search name, organisation, warm path" value="${esc(P.q)}" style="max-width:300px">
+      <select id="ps" style="max-width:170px"><option value="open" ${P.stage==='open'?'selected':''}>All open stages</option><option value="any" ${P.stage==='any'?'selected':''}>Every stage</option>${CSTAGES.map(s=>`<option ${P.stage===s?'selected':''}>${s}</option>`).join('')}</select>
+      <div class="chips small"><button data-f="" class="${!P.flag?'on':''}">All</button><button data-f="nonext" class="${P.flag==='nonext'?'on':''}">No next step</button><button data-f="overdue" class="${P.flag==='overdue'?'on':''}">Overdue</button><button data-f="nowarm" class="${P.flag==='nowarm'?'on':''}">No warm path</button></div>
+    </div><div id="pf" class="funnel"></div><div id="pl" class="list"></div>`;
+  el.querySelectorAll('#pt button').forEach(b => b.onclick = () => { P.type = b.dataset.t; pipeline(el); });
+  el.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { P.flag = b.dataset.f; pipeline(el); });
+  $('#ps').onchange = e => { P.stage = e.target.value; pipeline(el); };
+  let q = sb.from('contacts').select('*').is('merged_into', null).order('next_step_date', { ascending: true, nullsFirst: false }).order('updated_at', { ascending: false }).limit(500);
+  if (P.type !== 'all') q = q.eq('type', P.type);
+  const { data, error } = await q; if (err(error)) return;
+  const t = todayISO();
+  const counts = Object.fromEntries(CSTAGES.map(s => [s, (data||[]).filter(c => c.stage === s).length]));
+  $('#pf').innerHTML = OPEN_STAGES.map(s => `<button data-s="${s}" class="${P.stage===s?'on':''}"><b>${counts[s]}</b><span>${s}</span></button>`).join('');
+  $('#pf').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { P.stage = P.stage === b.dataset.s ? 'open' : b.dataset.s; pipeline(el); });
+  const draw = () => {
+    const qq = P.q.toLowerCase();
+    const rows = (data||[]).filter(c => (P.stage === 'any' || (P.stage === 'open' ? OPEN_STAGES.includes(c.stage) : c.stage === P.stage))
+      && (!qq || [c.name, c.org, c.warm_path, c.email, c.telegram, c.x_handle, c.next_step].join(' ').toLowerCase().includes(qq))
+      && (P.flag !== 'nonext' || !c.next_step) && (P.flag !== 'overdue' || (c.next_step_date && c.next_step_date < t)) && (P.flag !== 'nowarm' || !c.warm_path));
+    $('#pl').innerHTML = rows.map(c => {
+      const od = c.next_step_date && c.next_step_date < t;
+      return `<div class="item pipe" data-id="${c.id}"><div class="grow" style="min-width:0">
+        <div class="row"><b class="ttl grow" style="font-weight:500">${esc(c.name)}${c.org?`<span class="meta"> · ${esc(c.org)}</span>`:''}</b>${stagePill(c.stage)}</div>
+        <div class="row meta wrapr" style="gap:10px;margin-top:3px"><span class="pill">${esc(c.type)}</span>
+          ${c.next_step?`<span class="${od?'over':''}">→ ${esc(c.next_step)}${c.next_step_date?' · '+fmtDate(c.next_step_date):''}</span>`:'<span class="warnt">No next step</span>'}
+          ${c.warm_path?`<span>via ${esc(c.warm_path)}</span>`:''}<span>owner ${esc(c.owner||'me')}</span>${c.last_touch_at?`<span>touched ${ago(c.last_touch_at)}</span>`:''}</div></div></div>`; }).join('') || '<div class="empty">No contacts match</div>';
+    $('#pl').querySelectorAll('.item').forEach(r => r.onclick = () => editContact(r.dataset.id));
+  };
+  draw(); $('#pq').oninput = e => { P.q = e.target.value; draw(); };
 }
+const crm = pipeline;
+
 async function editContact(id, preset = {}, after){
-  let c = preset; if (id) ({ data: c } = await sb.from('contacts').select('*').eq('id', id).single());
-  const v = c.venture_id || (S.venture!=='all'?S.venture:S.ventures[0]?.id);
-  openModal(`<h3>${id?'Edit contact':'New contact'}</h3><form id="kf" class="fields">
+  let c = { type: 'investor', stage: 'lead', owner: 'me', threads: [], ...preset };
+  let acts = [];
+  if (id) {
+    const [{ data: k }, { data: a }] = await Promise.all([sb.from('contacts').select('*').eq('id', id).single(), sb.from('contact_activities').select('*').eq('contact_id', id).order('happened_at', { ascending: false }).limit(40)]);
+    c = k; acts = a || [];
+  }
+  const threads = (c.threads || []).map(t => (t.label ? t.label + ' | ' : '') + t.url).join('\n');
+  openModal(`<h3>${id ? esc(c.name) : 'New contact'}</h3>${id && c.created_by ? `<div class="meta" style="margin:-6px 0 12px">Added by ${esc(c.created_by)}${c.source?' · source: '+esc(c.source):''}</div>` : ''}
+    <form id="kf" class="fields">
     <label class="f">Name<input name="name" value="${esc(c.name)}" required></label>
     <label class="f">Organisation<input name="org" value="${esc(c.org)}"></label>
+    <label class="f">Type<select name="type">${CTYPES.slice(1).map(([k,l])=>`<option value="${k}" ${c.type===k?'selected':''}>${l.replace(/s$/,'')}</option>`).join('')}</select></label>
+    <label class="f">Stage<select name="stage">${CSTAGES.map(s=>`<option ${c.stage===s?'selected':''}>${s}</option>`).join('')}</select></label>
+    <label class="f full">Next step<input name="next_step" value="${esc(c.next_step)}" placeholder="e.g. Send deck after call"></label>
+    <label class="f">Next step date<input type="date" name="next_step_date" value="${esc(c.next_step_date)}"></label>
+    <label class="f">Owner<input name="owner" value="${esc(c.owner)}" placeholder="me, or an agent's name"></label>
+    <label class="f full">Warm path (who can introduce us)<input name="warm_path" value="${esc(c.warm_path)}"></label>
     <label class="f">Role<input name="role" value="${esc(c.role)}"></label>
-    <label class="f">Venture${ventureSelect('venture_id', v)}</label>
+    <label class="f">Source<input name="source" value="${esc(c.source)}"></label>
     <label class="f">Email<input name="email" value="${esc(c.email)}"></label>
     <label class="f">Telegram<input name="telegram" value="${esc(c.telegram)}"></label>
     <label class="f">X handle<input name="x_handle" value="${esc(c.x_handle)}"></label>
     <label class="f">LinkedIn<input name="linkedin" value="${esc(c.linkedin)}"></label>
-    <label class="f full">Tags (comma separated)<input name="tags" value="${esc((c.tags||[]).join(', '))}"></label>
+    <label class="f full">Thread links, one per line ("label | url")<textarea name="threads" style="min-height:60px">${esc(threads)}</textarea></label>
     <label class="f full">Notes<textarea name="notes">${esc(c.notes)}</textarea></label>
-    <div class="row full">${id?'<button type="button" class="btn" id="kdel">Delete</button>':''}<span class="grow"></span><button class="btn primary">Save</button></div></form>`);
-  $('#kf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target); f.tags = f.tags ? f.tags.split(',').map(s=>s.trim()).filter(Boolean) : [];
-    const q = id ? sb.from('contacts').update(f).eq('id', id).select().single() : sb.from('contacts').insert(f).select().single();
-    const { data, error } = await q; if (err(error)) return; closeModal(); toast('Saved'); if (after) after(data); else if (S.view==='crm') crm($('#view')); };
-  const d = $('#kdel'); if (d) d.onclick = async () => { await sb.from('contacts').delete().eq('id', id); closeModal(); crm($('#view')); };
+    <div class="row full"><span class="grow meta" id="kerr" style="color:var(--bad)"></span><button class="btn primary">Save</button></div></form>
+    ${id ? `<div class="label" style="margin:18px 0 8px">Log a touch</div>
+    <form id="af" class="row wrapr"><select name="kind" style="max-width:120px">${['email','telegram','call','meeting','intro','x','linkedin','note'].map(k=>`<option>${k}</option>`).join('')}</select>
+      <select name="direction" style="max-width:100px"><option value="out">out</option><option value="in">in</option><option value="">n/a</option></select>
+      <input name="summary" placeholder="What happened" required class="grow"><button class="btn small">Add</button></form>
+    <div class="label" style="margin:18px 0 8px">Activity</div>
+    <div class="timeline">${acts.map(a=>`<div><span class="meta">${new Date(a.happened_at).toLocaleDateString([], {day:'numeric',month:'short'})}</span><span class="pill">${esc(a.kind)}${a.direction?' '+a.direction:''}</span><span class="grow">${esc(a.summary)}${a.url?` <a href="${esc(a.url)}" target="_blank" rel="noopener">link</a>`:''}</span><span class="meta">${esc(a.actor)}</span></div>`).join('') || '<div class="empty">No activity yet</div>'}</div>` : ''}`);
+  $('#kf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target);
+    f.threads = (f.threads || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => { const i = l.lastIndexOf('|'); return i > 0 ? { label: l.slice(0, i).trim(), url: l.slice(i + 1).trim() } : { url: l }; });
+    if (f.telegram) f.telegram = f.telegram.replace(/^@/, ''); if (f.x_handle) f.x_handle = f.x_handle.replace(/^@/, ''); if (f.email) f.email = f.email.toLowerCase();
+    const { data, error } = id ? await sb.from('contacts').update(f).eq('id', id).select().single() : await sb.from('contacts').insert({ ...f, created_by: 'me' }).select().single();
+    if (error) { $('#kerr').textContent = error.code === '23505' ? 'Another contact already has this name and organisation, email or handle. Search the pipeline for it.' : error.message; return; }
+    closeModal(); toast('Saved'); if (after) after(data); else render(); };
+  const af = $('#af'); if (af) af.onsubmit = async e => { e.preventDefault(); const f = formData(e.target);
+    const { error } = await sb.from('contact_activities').insert({ contact_id: id, kind: f.kind, direction: f.direction || null, summary: f.summary, actor: 'me' });
+    if (!err(error)) { toast('Logged'); editContact(id, {}, after); } };
 }
+
+// ---------- approvals v2 ----------
+const CH_LABEL = { email: 'Email', telegram: 'Telegram', x: 'X', linkedin: 'LinkedIn', other: 'Other' };
+const chOf = a => a.channel || (a.kind === 'email' ? 'email' : a.kind === 'x_post' ? 'x' : (a.payload||{}).channel === 'telegram' ? 'telegram' : 'other');
+async function approvals(el){
+  const tab = S.apprTab || 'decide', ch = S.apprCh || 'all';
+  el.innerHTML = `<h1>Approvals</h1><div class="sub">Nothing leaves without you. Approve, edit or reject in one tap.</div>
+    <div class="tabs"><button data-t="decide" class="${tab==='decide'?'on':''}">To decide<span class="count" id="ac-decide"></span></button><button data-t="send" class="${tab==='send'?'on':''}">Approved, to send<span class="count" id="ac-send"></span></button><button data-t="done" class="${tab==='done'?'on':''}">Decided</button></div>
+    <div class="chips small" style="margin-bottom:14px">${['all','email','telegram','x','linkedin','other'].map(k=>`<button data-c="${k}" class="${ch===k?'on':''}">${k==='all'?'All channels':CH_LABEL[k]}</button>`).join('')}</div><div id="al"></div>`;
+  el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.apprTab = b.dataset.t; approvals(el); });
+  el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { S.apprCh = b.dataset.c; approvals(el); });
+  let q = sb.from('approvals').select('*, agents(name), contacts(id,name,org)');
+  q = tab === 'decide' ? q.eq('status', 'pending').order('created_at', { ascending: false }) : tab === 'send' ? q.eq('status', 'approved').order('decided_at', { ascending: false }) : q.in('status', ['done', 'rejected']).order('decided_at', { ascending: false, nullsFirst: false }).limit(80);
+  if (ch !== 'all') q = q.eq('channel', ch);
+  const [{ data }, c1, c2] = await Promise.all([q.limit(150), sb.from('approvals').select('id', { count: 'exact', head: true }).eq('status', 'pending'), sb.from('approvals').select('id', { count: 'exact', head: true }).eq('status', 'approved')]);
+  $('#ac-decide').textContent = c1.count || ''; $('#ac-send').textContent = c2.count || '';
+  const rank = { high: 0, medium: 1, low: 2 };
+  const items = (data || []).slice().sort((a, b) => tab === 'decide' ? (rank[a.risk] - rank[b.risk]) || (new Date(b.created_at) - new Date(a.created_at)) : 0);
+  $('#al').innerHTML = items.map(a => apprCard(a, tab)).join('') || `<div class="list"><div class="empty">${tab==='decide'?'Nothing to decide. New drafts from both agent teams land here.':tab==='send'?'Nothing approved and waiting to be sent.':'No decisions yet.'}</div></div>`;
+  $('#al').querySelectorAll('.appr').forEach(card => wireAppr(card, items.find(x => x.id === card.dataset.id), el));
+}
+function apprCard(a, tab){
+  const p = a.payload || {}, ch = chOf(a), con = a.consistency;
+  const who = a.submitted_by || a.agents?.name || (a.source === 'grok' ? 'Grok Bot' : 'Panel');
+  const check = !con ? (tab === 'decide' ? '<div class="chk wait">Being checked against the facts sheet</div>' : '')
+    : con.ok ? `<div class="chk ok">Matches facts sheet v${con.facts_version}</div>`
+    : `<div class="chk bad"><b>Contradicts facts sheet v${con.facts_version}</b>${(con.issues||[]).map(i=>`<div>"${esc(i.quote)}": ${esc(i.problem)}${i.fact?` <span class="meta">Facts: ${esc(i.fact)}</span>`:''}</div>`).join('')}</div>`;
+  const text = a.status === 'pending' ? a.body : (a.final_text ?? a.body);
+  const decided = a.status !== 'pending' ? `<div class="meta">${a.decision ? esc(a.decision) : esc(a.status)}${a.decided_at ? ' · ' + fmtDate(a.decided_at) : ''}${a.decision_note ? ' · ' + esc(a.decision_note) : ''}</div>` : '';
+  return `<div class="appr risk-${a.risk||'low'}" data-id="${a.id}">
+    <div class="row wrapr"><span class="chan">${CH_LABEL[ch]}</span>${a.risk && a.risk !== 'low' ? `<span class="pill ${a.risk==='high'?'failed':'waiting'}">${a.risk} risk</span>` : ''}<b class="grow ttl" style="font-weight:500">${esc(a.title)}</b><span class="meta">${esc(who)} · ${fmtDate(a.created_at)}</span></div>
+    <div class="meta" style="margin-top:4px">${a.recipient ? 'To ' + esc(a.recipient) : ''}${p.subject ? ' · ' + esc(p.subject) : ''}${a.contacts ? ` · <a href="#" data-contact="${a.contacts.id}">${esc(a.contacts.name)}${a.contacts.org ? ', ' + esc(a.contacts.org) : ''}</a>` : ''}${p.url ? ` · <a href="${esc(p.url)}" target="_blank" rel="noopener">link</a>` : ''}</div>
+    ${a.why_now || p.why ? `<div class="why"><span class="label">Why now</span> ${esc(a.why_now || p.why)}</div>` : ''}
+    ${check}${decided}
+    <textarea data-body ${tab==='done'?'readonly':''}>${esc(text || '')}</textarea>${ch==='x'?`<div class="meta" data-len></div>`:''}
+    <div class="acts" data-acts></div></div>`;
+}
+function wireAppr(card, a, el){
+  const ta = card.querySelector('[data-body]'), len = card.querySelector('[data-len]'), box = card.querySelector('[data-acts]'), p = a.payload || {}, ch = chOf(a);
+  const upd = () => { if (len) { len.textContent = `${ta.value.length} / 280`; len.style.color = ta.value.length > 280 ? 'var(--bad)' : ''; } }; ta.oninput = upd; upd();
+  const ct = card.querySelector('[data-contact]'); if (ct) ct.onclick = e => { e.preventDefault(); editContact(ct.dataset.contact); };
+  const gone = msg => { toast(msg); card.remove(); renderCounts(); };
+  const sendActions = () => {
+    const canEmail = ch === 'email' && (p.to || a.recipient);
+    const canTg = ch === 'telegram' && p.account_id && p.chat_id;
+    const grokX = ch === 'x' && a.source === 'grok';
+    box.innerHTML = `${grokX ? '<div class="meta grow">CR Social picks this up and posts it.</div>' : ''}
+      ${canEmail ? '<button class="btn primary" data-a="email">Send email</button>' : ''}${canTg ? '<button class="btn primary" data-a="tg">Send on Telegram</button>' : ''}
+      ${ch === 'x' && !grokX ? '<button class="btn primary" data-a="x">Open in X</button>' : ''}<button class="btn" data-a="copy">Copy</button><button class="btn" data-a="sent">${ch==='x'?'Mark posted':'Mark sent'}</button>`;
+    wire();
+  };
+  const decideActions = () => { box.innerHTML = '<button class="btn primary big" data-a="approve">Approve</button><button class="btn big" data-a="reject">Reject</button><button class="btn ghost" data-a="copy">Copy</button>'; wire(); };
+  const markSent = async (how) => {
+    await sb.from('approvals').update({ status: 'done', final_text: ta.value }).eq('id', a.id);
+    await sb.from('activity').insert({ venture_id: a.venture_id, kind: a.kind, summary: `${ch==='x'?'Posted':'Sent'}: ${a.title}` });
+    if (a.contact_id) {
+      await sb.from('contact_activities').insert({ contact_id: a.contact_id, kind: ch === 'other' ? 'note' : ch, direction: 'out', summary: `${how}: ${ta.value.slice(0, 140)}`, actor: 'me' });
+      const { data: k } = await sb.from('contacts').select('stage,next_step').eq('id', a.contact_id).single();
+      const upd2 = {}; if (k?.stage === 'lead') upd2.stage = 'contacted';
+      if (!k?.next_step) { upd2.next_step = 'Wait for reply, nudge if quiet'; upd2.next_step_date = new Date(Date.now() + 4 * 864e5).toISOString().slice(0, 10); }
+      if (Object.keys(upd2).length) await sb.from('contacts').update(upd2).eq('id', a.contact_id);
+    }
+  };
+  const wire = () => box.querySelectorAll('[data-a]').forEach(btn => btn.onclick = async () => {
+    const act = btn.dataset.a;
+    if (act === 'copy') return copyText(ta.value);
+    if (act === 'approve') {
+      const edited = ta.value.trim() !== (a.body || '').trim();
+      const { error } = await sb.from('approvals').update({ status: 'approved', decision: edited ? 'edited' : 'approved', final_text: ta.value, decided_at: new Date().toISOString() }).eq('id', a.id);
+      if (err(error)) return; a.status = 'approved'; toast(edited ? 'Approved with your edits' : 'Approved'); renderCounts();
+      card.classList.add('approved'); ta.readOnly = false; return sendActions();
+    }
+    if (act === 'reject') {
+      box.innerHTML = '<input data-note placeholder="Why? (optional, the agent sees this)" class="grow"><button class="btn" data-a="reject2">Reject</button><button class="btn ghost" data-a="back">Back</button>'; wire(); box.querySelector('[data-note]').focus(); return;
+    }
+    if (act === 'back') return decideActions();
+    if (act === 'reject2') {
+      const note = box.querySelector('[data-note]').value.trim() || null;
+      const { error } = await sb.from('approvals').update({ status: 'rejected', decision: 'rejected', decision_note: note, decided_at: new Date().toISOString() }).eq('id', a.id);
+      if (!err(error)) gone('Rejected'); return;
+    }
+    if (act === 'x') { window.open('https://x.com/intent/post?text=' + encodeURIComponent(ta.value), '_blank', 'noopener'); toast((p.account ? `Post as @${p.account}. ` : '') + 'Then tap Mark posted'); return; }
+    if (act === 'sent') { await markSent(ch === 'x' ? 'Posted' : 'Sent'); return gone('Marked sent'); }
+    if (act === 'tg') { btn.textContent = 'Sending'; const r = await tgCall('send', { account_id: p.account_id, chat_id: p.chat_id, text: ta.value }); if (r.error) { btn.textContent = 'Retry'; return toast('Failed: ' + r.error); } await markSent('Telegram'); return gone('Sent on Telegram'); }
+    if (act === 'email') {
+      let acct = p.account_id; if (!acct) { const { data: ac } = await sb.from('email_accounts').select('id').eq('active', true).limit(1); acct = ac?.[0]?.id; }
+      const { error } = await sb.from('outbox').insert({ channel: 'email', email_account_id: acct, venture_id: a.venture_id, status: 'queued', payload: { to: p.to || a.recipient, subject: p.subject || a.title, body: ta.value, in_reply_to: p.in_reply_to || null, from_name: 'Ceriel van den Adel' } });
+      if (err(error)) return; btn.textContent = 'Sending'; await markSent('Email'); const r = await runJob('email-send'); const x = (r.emailSend || []).find(x => x.error); gone(x ? 'Failed: ' + x.error : 'Sent');
+    }
+  });
+  if (a.status === 'pending') decideActions(); else if (a.status === 'approved') sendActions(); else box.innerHTML = '';
+}
+
+// ---------- opportunities ----------
+async function opps(el){
+  const tab = S.oppTab || 'open';
+  el.innerHTML = `<h1>Opportunities</h1><div class="sub">Things that need your decision, ranked. From both agent teams.</div>
+    <div class="tabs">${[['open','Open'],['accepted','Accepted'],['dismissed','Dismissed']].map(([k,l])=>`<button data-t="${k}" class="${tab===k?'on':''}">${l}</button>`).join('')}</div><div id="ol"></div>`;
+  el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.oppTab = b.dataset.t; opps(el); });
+  const { data } = await sb.from('opportunities').select('*, contacts(id,name,org)').eq('status', tab).order('created_at', { ascending: false }).limit(150);
+  const u = { urgent: 0, normal: 1, low: 2 };
+  const items = (data || []).sort((a, b) => (u[a.urgency] - u[b.urgency]) || (b.score - a.score));
+  $('#ol').innerHTML = items.map(o => {
+    const merge = (o.suggested_action || '').startsWith('merge:');
+    return `<div class="opp" data-id="${o.id}"><div class="score s${o.score>=75?'h':o.score>=50?'m':'l'}">${o.score}</div><div class="grow" style="min-width:0">
+      <div class="row wrapr"><b class="grow" style="font-weight:500">${esc(o.title)}</b>${o.urgency==='urgent'?'<span class="pill failed">urgent</span>':''}<span class="pill">${esc(o.type)}</span></div>
+      <div style="margin:4px 0">${esc(o.reason)}</div>
+      ${o.suggested_action ? `<div class="meta"><b>Do:</b> ${merge ? 'Merge these two contacts' : esc(o.suggested_action)}</div>` : ''}
+      <div class="row wrapr meta" style="margin-top:8px;gap:10px"><span>${esc(o.submitted_by || o.source)}</span><span>${fmtDate(o.created_at)}</span>${o.url?`<a href="${esc(o.url)}" target="_blank" rel="noopener">open link</a>`:''}${o.contacts?`<a href="#" data-contact="${o.contacts.id}">${esc(o.contacts.name)}</a>`:''}</div>
+      ${tab === 'open' ? `<div class="acts" style="margin-top:10px"><button class="btn primary" data-a="accept">${merge ? 'Merge' : 'Accept, make a task'}</button><button class="btn" data-a="dismiss">Dismiss</button></div>` : ''}</div></div>`; }).join('') || `<div class="list"><div class="empty">${tab==='open'?'Nothing needs you right now.':'Nothing here yet.'}</div></div>`;
+  $('#ol').querySelectorAll('[data-contact]').forEach(a => a.onclick = e => { e.preventDefault(); editContact(a.dataset.contact); });
+  $('#ol').querySelectorAll('.opp').forEach(card => card.querySelectorAll('[data-a]').forEach(btn => btn.onclick = async () => {
+    const o = items.find(x => x.id === card.dataset.id);
+    if (btn.dataset.a === 'dismiss') { await sb.from('opportunities').update({ status: 'dismissed', decided_at: new Date().toISOString() }).eq('id', o.id); card.remove(); renderCounts(); return toast('Dismissed'); }
+    if ((o.suggested_action || '').startsWith('merge:')) { const [, keep, merge] = o.suggested_action.split(':'); const { error } = await sb.rpc('merge_contacts', { p_keep: keep, p_merge: merge }); if (err(error)) return; }
+    else await sb.from('tasks').insert({ title: (o.suggested_action || o.title).slice(0, 200), notes: [o.title, o.reason, o.url].filter(Boolean).join('\n'), priority: o.urgency === 'urgent' ? 1 : 2, due_date: new Date(Date.now() + (o.urgency === 'urgent' ? 0 : 2) * 864e5).toISOString().slice(0, 10) });
+    if (o.contact_id && /^warm:/.test(o.external_ref || '')) await sb.from('contacts').update({ warm_path: o.title.replace(/^.* via /, '') }).eq('id', o.contact_id).is('warm_path', null);
+    await sb.from('opportunities').update({ status: 'accepted', decided_at: new Date().toISOString() }).eq('id', o.id);
+    card.remove(); renderCounts(); toast((o.suggested_action || '').startsWith('merge:') ? 'Merged' : 'Added to Tasks');
+  }));
+}
+
+// ---------- facts sheet ----------
+async function facts(el){
+  const { data: vs } = await sb.from('facts_versions').select('version,content,note,edited_by,created_at').order('version', { ascending: false }).limit(50);
+  const cur = (vs || [])[0] || { version: 0, content: '', created_at: null };
+  const age = cur.created_at ? Math.floor((Date.now() - new Date(cur.created_at)) / 864e5) : null;
+  el.innerHTML = `<div class="row wrapr" style="margin-bottom:6px"><h1 class="grow">Facts sheet</h1><span class="pill ${age!==null&&age>30?'failed':'sent'}">v${cur.version} · edited ${cur.created_at?fmtDate(cur.created_at):'never'}${age!==null&&age>30?' · stale':''}</span></div>
+    <div class="sub">Approved messaging. Both agent teams read this before writing anything, and the Consistency check flags drafts that contradict it.</div>
+    ${age!==null&&age>30?`<div class="chk bad" style="margin-bottom:12px">Last edited ${age} days ago. Check that statuses and numbers are still right.</div>`:''}
+    <div class="tabs"><button data-t="edit" class="${(S.factTab||'edit')==='edit'?'on':''}">Edit</button><button data-t="view" class="${S.factTab==='view'?'on':''}">Preview</button><button data-t="hist" class="${S.factTab==='hist'?'on':''}">History (${(vs||[]).length})</button></div><div id="fb"></div>`;
+  el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.factTab = b.dataset.t; facts(el); });
+  const tab = S.factTab || 'edit';
+  if (tab === 'edit') {
+    $('#fb').innerHTML = `<textarea id="fx" style="min-height:60vh;font-family:var(--mono);font-size:12.5px;line-height:1.55">${esc(cur.content)}</textarea>
+      <div class="row wrapr" style="margin-top:10px"><input id="fn" placeholder="What changed (shown in history)" class="grow"><button class="btn primary" id="fs">Save as v${cur.version + 1}</button></div>`;
+    $('#fs').onclick = async () => { const content = $('#fx').value; if (content.trim() === cur.content.trim()) return toast('No changes');
+      const { error } = await sb.from('facts_versions').insert({ content, note: $('#fn').value || null, edited_by: 'me' }); if (!err(error)) { toast(`Saved as v${cur.version + 1}`); facts(el); } };
+  } else if (tab === 'view') {
+    $('#fb').innerHTML = `<div class="card md">${md(cur.content)}</div>`;
+  } else {
+    $('#fb').innerHTML = `<div class="list">${(vs||[]).map(v=>`<div class="item" data-v="${v.version}"><b style="font-weight:500">v${v.version}</b><div class="grow">${esc(v.note||'')}</div><span class="meta">${esc(v.edited_by)} · ${fmtDate(v.created_at)}</span></div>`).join('')}</div>`;
+    $('#fb').querySelectorAll('[data-v]').forEach(r => r.onclick = () => { const v = vs.find(x => x.version == r.dataset.v);
+      openModal(`<h3>Version ${v.version}</h3><div class="meta" style="margin-bottom:10px">${esc(v.note||'')} · ${fmtDate(v.created_at)}</div><div class="md" style="max-height:60vh;overflow:auto">${md(v.content)}</div>
+        <div class="row" style="justify-content:flex-end;margin-top:12px">${v.version !== cur.version ? '<button class="btn primary" id="frs">Restore as new version</button>' : ''}</div>`);
+      const b = $('#frs'); if (b) b.onclick = async () => { const { error } = await sb.from('facts_versions').insert({ content: v.content, note: `Restored v${v.version}`, edited_by: 'me' }); if (!err(error)) { closeModal(); S.factTab = 'edit'; facts(el); } }; });
+  }
+}
+
+// ---------- spend ----------
+async function spendMeter(){
+  const { data: s } = await sb.from('spend_summary').select('*').single();
+  if (!s) return '';
+  const bar = (v, cap) => { const pct = Math.min(100, cap ? v / cap * 100 : 0); return `<div class="meter"><div style="width:${pct}%" class="${pct>=100?'full':pct>=80?'warn':''}"></div></div>`; };
+  return `<div class="card spend"><div class="row"><div class="label grow">Claude API spend</div><button class="btn small ghost" id="capEdit">Caps</button></div>
+    <div class="grid g2" style="gap:14px;margin-top:8px"><div><div class="row meta"><span class="grow">Today</span><span>$${Number(s.today_usd).toFixed(2)} of $${Number(s.daily_cap_usd).toFixed(2)}</span></div>${bar(+s.today_usd, +s.daily_cap_usd)}</div>
+    <div><div class="row meta"><span class="grow">This month</span><span>$${Number(s.month_usd).toFixed(2)} of $${Number(s.monthly_cap_usd).toFixed(0)}</span></div>${bar(+s.month_usd, +s.monthly_cap_usd)}</div></div>
+    <div class="meta" style="margin-top:6px">Agents pause on their own at a cap and resume the next day. Grok Bot runs on its own budget.</div></div>`;
+}
+function wireCaps(after){
+  const b = $('#capEdit'); if (!b) return;
+  b.onclick = async () => { const { data: c } = await sb.from('budget').select('*').eq('id', 1).single();
+    openModal(`<h3>Spend caps</h3><form id="cf" class="fields"><label class="f">Daily cap (USD)<input type="number" step="0.1" min="0" name="daily_usd" value="${c.daily_usd}"></label><label class="f">Monthly cap (USD)<input type="number" step="1" min="0" name="monthly_usd" value="${c.monthly_usd}"></label><div class="row full" style="justify-content:flex-end"><button class="btn primary">Save</button></div></form>`);
+    $('#cf').onsubmit = async e => { e.preventDefault(); const f = formData(e.target); const { error } = await sb.from('budget').update({ daily_usd: Number(f.daily_usd), monthly_usd: Number(f.monthly_usd), updated_at: new Date().toISOString() }).eq('id', 1); if (!err(error)) { closeModal(); toast('Saved'); after(); } }; };
+}
+
+// ---------- agents (both teams) ----------
+const PANEL_TEAM = ['triage','followup','hygiene','brief','consistency','warmpaths','seo','orchestrator'];
+async function agentTeams(box, el){
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const day = new Date(Date.now() - 864e5).toISOString();
+  const [{ data: ags }, { data: runs }, { data: toks }, { data: calls }, { data: reps }, { data: bots }, meter] = await Promise.all([
+    sb.from('agents').select('*').order('sort'), sb.from('agent_runs').select('*').gte('started_at', new Date(Date.now()-40*864e5).toISOString()).order('started_at',{ascending:false}),
+    sb.from('agent_tokens').select('*').is('revoked_at', null).order('created_at'), sb.from('api_audit').select('token_id,status,error,path,created_at').gte('created_at', day).order('created_at',{ascending:false}).limit(2000),
+    sb.from('agent_reports').select('agent_name,token_id,summary,created_at').order('created_at',{ascending:false}).limit(50), sb.from('grok_bots').select('*').order('created_at'), spendMeter()]);
+  await Promise.all((bots||[]).map(async b => { const { data } = await sb.rpc('grok_key_set', { p_bot_id: b.id }); b._key = data === true; }));
+  const card = (a) => {
+    const rs = (runs||[]).filter(r=>r.agent_id===a.id), last = rs.find(r => r.status !== 'running') || rs[0], lastErr = rs.find(r => r.status === 'failed');
+    const spent = rs.filter(r=>new Date(r.started_at)>=monthStart).reduce((x,r)=>x+Number(r.cost_usd||0),0);
+    const st = !last ? '<span class="pill">not run yet</span>' : last.status==='done' ? '<span class="pill sent">ok</span>' : last.status==='running' ? '<span class="pill todo">running</span>' : last.status==='failed' ? '<span class="pill failed">failed</span>' : '<span class="pill waiting">paused</span>';
+    const orch = a.slug === 'orchestrator', legacy = !PANEL_TEAM.includes(a.slug);
+    return `<div class="agent ${legacy&&!a.enabled?'dim':''}"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(a.name)}</b>${orch?'<span class="pill">on demand</span>':`<div class="switch ${a.enabled?'on':''}" data-tog="${a.id}" title="${a.enabled?'On':'Off'}"></div>`}</div>
+      <div class="meta" style="margin:4px 0 10px">${esc(a.role)}</div>
+      <div class="row meta wrapr" style="gap:12px"><span>${orch?'Runs when you chat':a.slug==='consistency'?'On every new draft':sched(a)}</span><span>${esc(a.model.replace('claude-','').replace(/-(\d+)-(\d+)$/,' $1.$2').replace(/^./,c=>c.toUpperCase()))}</span><span>$${spent.toFixed(2)} of $${a.monthly_budget_usd}</span></div>
+      <div style="margin:10px 0;min-height:36px">${st} <span class="meta">${last?fmtDate(last.started_at)+' · ':''}${esc(last?.status==='failed'?last.error:last?.summary||'')}</span>
+      ${lastErr && lastErr !== last ? `<div class="meta" style="color:var(--bad);margin-top:4px">Last error ${fmtDate(lastErr.started_at)}: ${esc((lastErr.error||'').slice(0,140))}</div>` : ''}</div>
+      <div class="row">${orch?`<button class="btn small primary" onclick="goto('overview')">Open chat</button>`:`<button class="btn small primary" data-run="${a.slug}">Run now</button>`}<button class="btn small" data-edit="${a.id}">Edit</button></div></div>`; };
+  const panel = (ags||[]).filter(a => PANEL_TEAM.includes(a.slug)), legacy = (ags||[]).filter(a => !PANEL_TEAM.includes(a.slug));
+  const grokCards = (toks||[]).filter(t => t.team !== 'test').map(t => {
+    const cs = (calls||[]).filter(c => c.token_id === t.id), errs = cs.filter(c => c.status >= 400), rep = (reps||[]).find(r => r.token_id === t.id);
+    return `<div class="agent"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(t.name)}</b><span class="pill ${errs.length?'waiting':cs.length?'sent':''}">${cs.length?'active':'quiet'}</span></div>
+      <div class="meta" style="margin:4px 0 10px">Grok Bot agent, talks to the panel through the API key ${esc(t.prefix)}…</div>
+      <div class="row meta wrapr" style="gap:12px"><span>Last call ${t.last_used_at?fmtDate(t.last_used_at):'never'}</span><span>${cs.length} calls in 24h</span><span>${errs.length} errors</span></div>
+      <div style="margin:10px 0;min-height:36px">${rep?`<span class="pill sent">report</span> <span class="meta">${fmtDate(rep.created_at)} · ${esc(rep.summary.slice(0,220))}</span>`:'<span class="meta">No daily report yet</span>'}
+      ${errs[0]?`<div class="meta" style="color:var(--bad);margin-top:4px">Last error ${fmtDate(errs[0].created_at)}: ${errs[0].status} ${esc((errs[0].error||'').slice(0,120))} (${esc(errs[0].path)})</div>`:''}</div></div>`; }).join('');
+  const botCards = (bots||[]).map(b => `<div class="agent"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(b.name)}</b>${gbStatus(b).split('<div')[0]}</div>
+      <div class="meta" style="margin:4px 0 10px">Grok Bot coordinator reached through its webhook${b.handle?' · posts as @'+esc(b.handle):''}</div>
+      <div class="row meta wrapr" style="gap:12px"><span>Last note ${b.last_sent_at?fmtDate(b.last_sent_at):'never'}</span><span>Last reply ${b.last_reply_at?fmtDate(b.last_reply_at):'never'}</span></div>
+      <div class="row" style="margin-top:12px"><button class="btn small" onclick="goto('settings')">Settings</button></div></div>`).join('');
+  box.innerHTML = `${meter}
+    <div class="label" style="margin:22px 0 10px">Grok Bot team <span class="meta">· the main operator: scouts, outreach, X</span></div>
+    <div class="grid g2">${botCards}${grokCards || '<div class="agent"><div class="meta">No Grok Bot agents connected to the API yet. Create a key per agent in Settings, then give it the instructions block.</div></div>'}</div>
+    <div class="label" style="margin:26px 0 10px">Panel team <span class="meta">· keeps the pipeline clean and checks everything before it goes out</span></div>
+    <div class="grid g2">${panel.map(card).join('')}</div>
+    ${legacy.length ? `<div class="label" style="margin:26px 0 10px">Paused <span class="meta">· replaced by the teams above, kept for reference</span></div><div class="grid g2">${legacy.map(card).join('')}</div>` : ''}`;
+  wireCaps(() => agents(el));
+  box.querySelectorAll('[data-tog]').forEach(t => t.onclick = async () => { const a = ags.find(x=>x.id===t.dataset.tog); await sb.from('agents').update({ enabled: !a.enabled }).eq('id', a.id); agents(el); });
+  box.querySelectorAll('[data-run]').forEach(b => b.onclick = async () => { const { error } = await sb.rpc('start_agent', { p_slug: b.dataset.run, p_trigger: 'manual' }); if (err(error)) return; toast('Started. Results appear here within a few minutes'); setTimeout(()=>agents(el), 4000); });
+  box.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editAgent(ags.find(x=>x.id===b.dataset.edit), el));
+}
+
+// ---------- agent API keys (settings) ----------
+const API_BASE = `${SUPABASE_URL}/functions/v1/agent-api/v1`;
+async function apiKeysSection(){
+  const { data: toks } = await sb.from('agent_tokens').select('*').order('created_at');
+  return `<div class="row" style="margin:26px 0 8px"><div class="label grow">Agent API keys</div><button class="btn small primary" id="tokNew">Create key</button></div>
+    <table><thead><tr><th>Agent</th><th>Key</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody>
+    ${(toks||[]).map(t=>`<tr><td>${esc(t.name)}${t.team==='test'?' <span class="pill">test</span>':''}</td><td><code>${esc(t.prefix)}…</code></td><td>${fmtDate(t.created_at)}</td><td>${t.last_used_at?fmtDate(t.last_used_at):'never'}</td>
+      <td>${t.revoked_at?'<span class="pill failed">revoked</span>':`<button class="btn small" data-revoke="${t.id}">Revoke</button>`}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">No keys yet</td></tr>'}</tbody></table>
+    <div class="meta" style="margin-top:6px">One key per outside agent (for example "CR Team" and "CR Social"). The panel only keeps a fingerprint of each key, so it is shown once. Base address: <code>${API_BASE}</code></div>`;
+}
+function wireApiKeys(el){
+  const n = $('#tokNew'); if (n) n.onclick = () => {
+    openModal(`<h3>New agent API key</h3><form id="tkf" class="fields"><label class="f full">Agent name (shown in the audit log)<input name="name" placeholder="CR Team" required></label><div class="row full" style="justify-content:flex-end"><button class="btn primary">Create</button></div></form>`);
+    $('#tkf').onsubmit = async e => { e.preventDefault(); const { data: raw, error } = await sb.rpc('create_agent_token', { p_name: e.target.name.value, p_team: 'grok' }); if (err(error)) return;
+      openModal(`<h3>Key for ${esc(e.target.name.value)}</h3><div class="meta" style="margin-bottom:10px">Copy it now and paste it only into the agent's masked secret field. It is not shown again.</div>
+        <input readonly value="${esc(raw)}" style="font-family:var(--mono)" id="tkr"><div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn primary" id="tkc">Copy key</button></div>`);
+      $('#tkc').onclick = () => copyText(raw); settings(el); };
+  };
+  document.querySelectorAll('[data-revoke]').forEach(b => b.onclick = async () => { if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Click again to revoke'; return; }
+    const { error } = await sb.from('agent_tokens').update({ revoked_at: new Date().toISOString() }).eq('id', b.dataset.revoke); if (!err(error)) { toast('Revoked'); settings(el); } });
+}
+
+// legacy deals (kept read-only history; the pipeline now lives on contacts)
 async function editDeal(id){
   let d = { pipeline: S.crm.pipeline, stage: 'lead', venture_id: S.venture!=='all'?S.venture:S.ventures[0]?.id };
   if (id) ({ data: d } = await sb.from('deals').select('*').eq('id', id).single());
@@ -684,64 +1017,6 @@ function tgConnect(el, acctId){
   step1();
 }
 
-// ---------- approvals ----------
-async function approvals(el){
-  const f = S.apprKind || 'all';
-  el.innerHTML = `<h1>Approvals</h1><div class="sub">Everything your agents want to send or post waits here</div>
-    <div class="tabs">${[['all','All'],['email','Email replies'],['outreach','Outreach'],['x_post','X posts'],['grok_note','Grok Bot']].map(([k,l])=>`<button data-k="${k}" class="${f===k?'on':''}">${l}</button>`).join('')}</div><div id="al"></div>`;
-  el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.apprKind = b.dataset.k; approvals(el); });
-  let q = sb.from('approvals').select('*, agents(name)').eq('status','pending').order('created_at',{ascending:false}).limit(100);
-  if (f !== 'all') q = q.eq('kind', f);
-  const [{ data }, { data: gb }] = await Promise.all([vf(q), sb.from('grok_bots').select('id,name,webhook_url')]);
-  S.gbots = gb || [];
-  $('#al').innerHTML = (data||[]).map(a => {
-    const p = a.payload || {};
-    let actions = '', extra = '';
-    if (a.kind==='email') { extra = `<div class="meta">To ${esc(p.to)} · ${esc(p.subject)}</div>`; actions = `<button class="btn small primary" data-act="send">Send email</button>`; }
-    if (a.kind==='outreach') { extra = `<div class="meta">${esc(p.why||'')}</div><div class="meta" style="margin-top:4px">Route: ${esc(p.route||'')} ${p.url?`· <a href="${esc(p.url)}" target="_blank" rel="noopener">open link</a>`:''}${p.subject?` · Subject: ${esc(p.subject)}`:''}</div>`;
-      actions = `${p.to?`<button class="btn small primary" data-act="send">Send from panel</button>`:''}<button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark sent</button>`; }
-    if (a.kind==='x_post') { extra = `<div class="meta">${esc(p.why||'')}${p.source_url?` · <a href="${esc(p.source_url)}" target="_blank" rel="noopener">source</a>`:''}</div>`;
-      actions = `<a class="btn small primary" data-act="x" href="#" style="text-decoration:none">Open in X</a><button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Mark posted</button>`; }
-    if (a.kind==='grok_note') actions = `${(S.gbots||[]).filter(b=>b.webhook_url).map(b=>`<button class="btn small primary" data-act="grok" data-bot="${b.id}">Send to ${esc(b.name)}</button>`).join('')}<button class="btn small" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
-    if (a.kind==='content' || a.kind==='other') actions = p.channel==='telegram' ? `<button class="btn small primary" data-act="tg">Send on Telegram</button><button class="btn small" data-act="copy">Copy</button>` : `<button class="btn small primary" data-act="copy">Copy</button><button class="btn small" data-act="done">Done</button>`;
-    return `<div class="appr" data-id="${a.id}"><div class="row">${vdot(a.venture_id)}<b class="grow" style="font-weight:500">${esc(a.title)}</b><span class="pill">${esc(a.agents?.name||'')}</span><span class="meta">${fmtDate(a.created_at)}</span></div>
-      ${extra}<textarea data-body>${esc(a.body||'')}</textarea>${a.kind==='x_post'?`<div class="meta" data-len></div>`:''}
-      <div class="row">${actions}<span class="grow"></span><button class="btn small ghost" data-act="reject">Reject</button></div></div>`;
-  }).join('') || '<div class="list"><div class="empty">Nothing waiting. Your agents will put new drafts here.</div></div>';
-  $('#al').querySelectorAll('.appr').forEach(card => {
-    const id = card.dataset.id, a = (data||[]).find(x=>x.id===id), ta = card.querySelector('[data-body]'), len = card.querySelector('[data-len]');
-    const upd = () => { if (len) { len.textContent = `${ta.value.length} / 280`; len.style.color = ta.value.length>280?'var(--bad)':''; } }; ta.oninput = upd; upd();
-    const finish = async (status, msg) => { await sb.from('approvals').update({ status, body: ta.value, decided_at: new Date().toISOString() }).eq('id', id); toast(msg); card.remove(); renderCounts(); };
-    card.querySelectorAll('[data-act]').forEach(btn => btn.onclick = async (e) => {
-      e.preventDefault(); const act = btn.dataset.act, p = a.payload||{};
-      if (act==='copy') return copyText(ta.value);
-      if (act==='x') { const acct = p.account ? `Post this as @${p.account}. ` : ''; window.open('https://x.com/intent/post?text='+encodeURIComponent(ta.value), '_blank', 'noopener'); toast(acct + 'Mark posted when done'); return; }
-      if (act==='reject') return finish('rejected', 'Rejected');
-      if (act==='tg') { btn.textContent = 'Sending'; const r = await tgCall('send', { account_id: p.account_id, chat_id: p.chat_id, text: ta.value }); if (r.error) { btn.textContent = 'Retry'; return toast('Failed: ' + r.error); } return finish('done', 'Sent on Telegram'); }
-      if (act==='grok') {
-        btn.textContent = 'Sending';
-        const j = await grokCall('send', { bot_id: btn.dataset.bot, text: ta.value, approval_id: id });
-        if (j.error) { btn.textContent = 'Retry'; return toast(j.error); }
-        toast('Delivered to the webhook. Settings shows when the Bot answers'); card.remove(); renderCounts(); return;
-      }
-      if (act==='done') {
-        if (a.kind==='outreach' && p.deal_id) await sb.from('deals').update({ stage:'contacted', next_step:'Wait for reply', next_step_date: new Date(Date.now()+5*864e5).toISOString().slice(0,10) }).eq('id', p.deal_id);
-        await sb.from('activity').insert({ venture_id: a.venture_id, kind: a.kind, summary: `${a.kind==='x_post'?'Posted':'Sent'}: ${a.title}` });
-        return finish('done', 'Marked done');
-      }
-      if (act==='send') {
-        let acct = p.account_id;
-        if (!acct) { const { data: ac } = await sb.from('email_accounts').select('id').eq('active', true).limit(1); acct = ac?.[0]?.id; }
-        const { error } = await sb.from('outbox').insert({ channel:'email', email_account_id: acct, venture_id: a.venture_id, status:'queued',
-          payload: { to: p.to, subject: p.subject || a.title, body: ta.value, in_reply_to: p.in_reply_to || null, from_name: 'Ceriel van den Adel' } });
-        if (err(error)) return;
-        if (a.kind==='outreach' && p.deal_id) await sb.from('deals').update({ stage:'contacted', next_step:'Wait for reply', next_step_date: new Date(Date.now()+5*864e5).toISOString().slice(0,10) }).eq('id', p.deal_id);
-        await finish('done', 'Sending'); const r = await runJob('email-send'); const x = (r.emailSend||[]).find(x=>x.error); toast(x ? 'Failed: '+x.error : 'Sent');
-      }
-    });
-  });
-}
-
 // ---------- agents ----------
 function sched(a){
   const h = a.at_hour!=null ? `${String(a.at_hour).padStart(2,'0')}:00` : '';
@@ -750,26 +1025,12 @@ function sched(a){
   return `Every ${a.every_hours}h`;
 }
 async function agents(el){
-  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">Agents</h1></div><div class="sub">Your AI team. Each runs on a schedule; anything outbound goes to Approvals first.</div>
-    <div class="tabs"><button data-t="team" class="${(S.agTab||'team')==='team'?'on':''}">Team</button><button data-t="knowledge" class="${S.agTab==='knowledge'?'on':''}">Knowledge</button><button data-t="runs" class="${S.agTab==='runs'?'on':''}">Run log</button></div><div id="ag"></div>`;
+  el.innerHTML = `<div class="row" style="margin-bottom:6px"><h1 class="grow">Agents</h1></div><div class="sub">Two teams, one panel. Grok Bot runs the outside work; the panel team keeps the pipeline clean and checks every draft. Anything outbound waits for you in Approvals.</div>
+    <div class="tabs"><button data-t="team" class="${(S.agTab||'team')==='team'?'on':''}">Teams</button><button data-t="knowledge" class="${S.agTab==='knowledge'?'on':''}">Knowledge</button><button data-t="runs" class="${S.agTab==='runs'?'on':''}">Run log</button></div><div id="ag"></div>`;
   el.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.agTab = b.dataset.t; agents(el); });
   const tab = S.agTab || 'team';
   if (tab === 'team') {
-    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-    const [{ data: ags }, { data: runs }] = await Promise.all([sb.from('agents').select('*').order('sort'), sb.from('agent_runs').select('*').gte('started_at', new Date(Date.now()-40*864e5).toISOString()).order('started_at',{ascending:false})]);
-    $('#ag').innerHTML = `<div class="grid g2">${(ags||[]).map(a => {
-      const rs = (runs||[]).filter(r=>r.agent_id===a.id), last = rs[0];
-      const spent = rs.filter(r=>new Date(r.started_at)>=monthStart).reduce((x,r)=>x+Number(r.cost_usd||0),0);
-      const st = !last ? '<span class="pill">not run yet</span>' : last.status==='done' ? '<span class="pill sent">done</span>' : last.status==='running' ? '<span class="pill todo">running</span>' : last.status==='failed' ? '<span class="pill failed">failed</span>' : '<span class="pill">skipped</span>';
-      const orch = a.slug === 'orchestrator';
-      return `<div class="agent"><div class="row"><b class="grow" style="font-weight:500;font-size:15px">${esc(a.name)}</b>${orch?'<span class="pill">on demand</span>':`<div class="switch ${a.enabled?'on':''}" data-tog="${a.id}" title="${a.enabled?'On':'Off'}"></div>`}</div>
-        <div class="meta" style="margin:4px 0 12px">${esc(a.role)}</div>
-        <div class="row meta" style="gap:14px"><span>${orch?'Runs when you chat':sched(a)}</span><span>${esc(a.model.replace('claude-','').replace(/-(\d+)-(\d+)$/,' $1.$2').replace(/^./,c=>c.toUpperCase()))}</span><span>$${spent.toFixed(2)} of $${a.monthly_budget_usd} this month</span></div>
-        <div style="margin:12px 0;min-height:40px">${st} <span class="meta">${last?fmtDate(last.started_at)+' · ':''}${esc(last?.status==='failed'?last.error:last?.summary||'')}</span></div>
-        <div class="row">${orch?`<button class="btn small primary" onclick="S.view='overview';location.hash='overview';renderChrome();render()">Open chat</button>`:`<button class="btn small primary" data-run="${a.slug}">Run now</button>`}<button class="btn small" data-edit="${a.id}">Edit</button></div></div>`; }).join('')}</div>`;
-    $('#ag').querySelectorAll('[data-tog]').forEach(t => t.onclick = async () => { const a = ags.find(x=>x.id===t.dataset.tog); await sb.from('agents').update({ enabled: !a.enabled }).eq('id', a.id); agents(el); });
-    $('#ag').querySelectorAll('[data-run]').forEach(b => b.onclick = async () => { const { error } = await sb.rpc('start_agent', { p_slug: b.dataset.run, p_trigger: 'manual' }); if (err(error)) return; toast('Started. Results appear here in 1 to 3 minutes'); setTimeout(()=>agents(el), 2500); });
-    $('#ag').querySelectorAll('[data-edit]').forEach(b => b.onclick = () => editAgent(ags.find(x=>x.id===b.dataset.edit), el));
+    await agentTeams($('#ag'), el);
   } else if (tab === 'knowledge') {
     const { data: kn } = await sb.from('knowledge').select('*').order('key');
     $('#ag').innerHTML = `<div class="meta" style="margin-bottom:12px">Every agent reads these before it works. The full company brain, including the status board, lives on the <a href="#brain">Brain</a> page.</div>
@@ -956,6 +1217,7 @@ async function settings(el){
       <td style="white-space:nowrap">${a.connected?`<button class="btn small" data-tgout="${a.id}">Disconnect</button>`:`<button class="btn small primary" data-tgin="${a.id}">Connect</button>`}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">No accounts yet</td></tr>'}
     </tbody></table>
     <div class="meta" style="margin-top:6px">Connecting works like logging into Telegram on a new device: your phone number and the login code. All accounts share the api_id and api_hash from my.telegram.org. End a session any time here or in Telegram under Settings, Devices.</div>
+    ${await apiKeysSection()}
     <div class="row" style="margin:26px 0 8px"><div class="label grow">Grok Bots</div><button class="btn small" id="addGB">Add Grok Bot</button></div>
     <table><thead><tr><th>Bot</th><th>Posts as</th><th>Status</th><th>Last note sent</th><th>Last reply</th><th></th></tr></thead><tbody>
     ${(gbots||[]).map(b=>`<tr><td>${esc(b.name)}</td><td>${b.handle?'@'+esc(b.handle):''}</td><td>${gbStatus(b)}</td><td>${b.last_sent_at?fmtDate(b.last_sent_at):''}</td><td>${b.last_reply_at?fmtDate(b.last_reply_at):'never'}</td><td style="white-space:nowrap">${b.webhook_url&&b._key?`<button class="btn small" data-gbping="${b.id}">Test connection</button> `:''}<button class="btn small primary" data-gb="${b.id}">Connect</button></td></tr>`).join('')}
@@ -1010,6 +1272,7 @@ async function settings(el){
       if (data?.replied_at) { toast('The Bot answered. Two-way connection works'); return settings(el); } }
     toast('The webhook accepted the test, but the Bot did not answer within 3 minutes'); settings(el);
   });
+  wireApiKeys(el);
   $('#addGB').onclick = async () => { const { error } = await sb.from('grok_bots').insert({ name: 'New Grok Bot' }); if (!err(error)) settings(el); };
   const reportUrl = `${SUPABASE_URL}/functions/v1/grok?action=report`;
   $('#gbUrl').onclick = () => copyText(reportUrl);
